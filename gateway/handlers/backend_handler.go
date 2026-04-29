@@ -10,6 +10,17 @@ import (
 
 type Handler struct {
 	proxy *httputil.ReverseProxy
+	cache map[string][]byte
+}
+
+type ResponseWriter struct {
+	http.ResponseWriter
+	body []byte
+}
+
+func (rw *ResponseWriter) Write(b []byte) (int, error) {
+	rw.body = append(rw.body, b...)
+	return rw.ResponseWriter.Write(b)
 }
 
 func NewHandler(target string) (*Handler, error) {
@@ -28,9 +39,23 @@ func NewHandler(target string) (*Handler, error) {
 		}
 	}
 
-	return &Handler{proxy: proxy}, nil
+	return &Handler{proxy: proxy, cache: make(map[string][]byte)}, nil
 }
 
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	h.proxy.ServeHTTP(w, r)
+
+	key := r.URL.Path
+
+	if data, ok := h.cache[key]; ok {
+		w.Write(data)
+		return
+	}
+
+	rw := &ResponseWriter{
+		ResponseWriter: w,
+	}
+
+	h.proxy.ServeHTTP(rw, r)
+
+	h.cache[key] = rw.body
 }
