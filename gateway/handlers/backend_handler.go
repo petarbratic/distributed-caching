@@ -1,16 +1,23 @@
 package handlers
 
 import (
-	//"log"
+	//"context"
+	"log"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
 	"strings"
+	"sync"
+	"time"
+
+	"github.com/redis/go-redis/v9"
 )
 
 type Handler struct {
 	proxy *httputil.ReverseProxy
 	cache map[string][]byte
+	mu    sync.RWMutex
+	redis *redis.Client
 }
 
 type ResponseWriter struct {
@@ -39,15 +46,39 @@ func NewHandler(target string) (*Handler, error) {
 		}
 	}
 
-	return &Handler{proxy: proxy, cache: make(map[string][]byte)}, nil
+	rdb := redis.NewClient(&redis.Options{
+		Addr: "redis:6379",
+	})
+
+	return &Handler{proxy: proxy,
+		cache: make(map[string][]byte),
+		redis: rdb,
+	}, nil
 }
 
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
-	key := r.URL.Path
+	start := time.Now()
 
+	ctx := r.Context()
+	key := r.URL.RequestURI()
+
+	h.mu.RLock()
 	if data, ok := h.cache[key]; ok {
+		h.mu.RUnlock()
 		w.Write(data)
+		log.Println("L1 HIT, total time: ", time.Since(start))
+		return
+	}
+	h.mu.RUnlock()
+
+	val, err := h.redis.Get(ctx, key).Bytes()
+	if err == nil {
+		h.mu.Lock()
+		h.cache[key] = val
+		h.mu.Unlock()
+		w.Write(val)
+		log.Println("L2 HIT, total time: ", time.Since(start))
 		return
 	}
 
@@ -55,7 +86,15 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		ResponseWriter: w,
 	}
 
+	log.Println("Backend call, total time: ", time.Since(start))
 	h.proxy.ServeHTTP(rw, r)
 
+	if err := h.redis.Set(ctx, key, rw.body, 0).Err(); err != nil {
+		log.Println("Redis SET error:", err)
+	}
+
+	h.mu.Lock()
 	h.cache[key] = rw.body
+	h.mu.Unlock()
+
 }

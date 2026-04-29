@@ -19,6 +19,13 @@ services:
     networks:
       - cache-net
 
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    networks:
+      - cache-net
+
 
 networks:
   cache-net:
