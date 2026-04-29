@@ -1,7 +1,7 @@
 package handlers
 
 import (
-	"log"
+	//"log"
 	"net/http"
 	"net/http/httputil"
 	"net/url"

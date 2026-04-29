@@ -3,6 +3,7 @@ package main
 import (
 	"gateway/handlers"
 	"gateway/router"
+	"github.com/rs/cors"
 	"log"
 	"net/http"
 	"os"
@@ -24,8 +25,15 @@ func main() {
 
 	r := router.NewRouter(handler)
 
+	c := cors.New(cors.Options{
+		AllowedOrigins: []string{"http://localhost:4200"},
+		AllowedMethods: []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowedHeaders: []string{"*"},
+	})
+
 	log.Println("Gateway running on: 8080")
-	if err := http.ListenAndServe(":8080", r); err != nil {
+
+	if err := http.ListenAndServe(":8080", c.Handler(r)); err != nil {
 		log.Fatalf("Failed to start server: %v", err)
 	}
 
