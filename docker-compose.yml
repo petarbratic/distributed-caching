@@ -18,6 +18,17 @@ services:
       dockerfile: backend/Dockerfile
     networks:
       - cache-net
+  
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    ports:
+      - "4200:4200"
+    depends_on:
+      - gateway
+    networks:
+      - cache-net
 
   redis:
     image: redis:7-alpine
