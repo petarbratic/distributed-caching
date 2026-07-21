@@ -3,10 +3,11 @@ package main
 import (
 	"gateway/handlers"
 	"gateway/router"
-	"github.com/rs/cors"
 	"log"
 	"net/http"
 	"os"
+
+	"github.com/rs/cors"
 )
 
 func main() {
