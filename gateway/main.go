@@ -13,7 +13,13 @@ import (
 
 func main() {
 
-	prometheus.MustRegister(totalRequests)
+	prometheus.MustRegister(totalUserRequests)
+	prometheus.MustRegister(totalBackendRequests)
+	prometheus.MustRegister(totalL1Hits)
+	prometheus.MustRegister(totalL2Hits)
+	prometheus.MustRegister(totalCacheMisses)
+	prometheus.MustRegister(requestDuration)
+	prometheus.MustRegister(backendDuration)
 
 	backendURL := os.Getenv("BACKEND_URL")
 

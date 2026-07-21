@@ -13,10 +13,78 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-var totalRequests = prometheus.NewCounter(
+var totalUserRequests = prometheus.NewCounter(
 	prometheus.CounterOpts{
 		Name: "gateway_http_requests_total",
 		Help: "Total number of HTTP requests gateway received.",
+	},
+)
+
+var totalBackendRequests = prometheus.NewCounter(
+	prometheus.CounterOpts{
+		Name: "gateway_backend_requests_total",
+		Help: "Total number of HTTP requests sent to backend.",
+	},
+)
+
+var totalL1Hits = prometheus.NewCounter(
+	prometheus.CounterOpts{
+		Name: "gateway_l1_hits_total",
+		Help: "Total number of L1 hits.",
+	},
+)
+
+var totalL2Hits = prometheus.NewCounter(
+	prometheus.CounterOpts{
+		Name: "gateway_l2_hits_total",
+		Help: "Total number of L2 hits.",
+	},
+)
+
+var totalCacheMisses = prometheus.NewCounter(
+	prometheus.CounterOpts{
+		Name: "gateway_cache_miss_total",
+		Help: "Total number of cache misses.",
+	},
+)
+
+var requestDuration = prometheus.NewHistogram(
+	prometheus.HistogramOpts{
+		Name: "gateway_request_duration_seconds",
+		Help: "Total duration of processing a user request (in seconds).",
+		Buckets: []float64{
+			0.001,
+			0.005,
+			0.01,
+			0.025,
+			0.05,
+			0.1,
+			0.25,
+			0.5,
+			1,
+			2,
+			5,
+		},
+	},
+)
+
+var backendDuration = prometheus.NewHistogram(
+	prometheus.HistogramOpts{
+		Name: "gateway_backend_duration_seconds",
+		Help: "Total duration of backend processing a user request (in seconds).",
+		Buckets: []float64{
+			0.001,
+			0.005,
+			0.01,
+			0.025,
+			0.05,
+			0.1,
+			0.25,
+			0.5,
+			1,
+			2,
+			5,
+		},
 	},
 )
 
@@ -80,7 +148,7 @@ func NewHandler(target string) (*Handler, error) {
 
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
-	totalRequests.Inc()
+	totalUserRequests.Inc()
 
 	start := time.Now()
 
@@ -91,9 +159,13 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	ttlL2 := 2 * time.Second
 
 	defer func() {
+		duration := time.Since(start)
+
+		requestDuration.Observe(duration.Seconds())
+
 		log.Printf(
 			"Request total time: %v, key: %s",
-			time.Since(start),
+			duration,
 			key,
 		)
 	}()
@@ -107,6 +179,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		if time.Now().Before(cached.Expiration) {
 			_, _ = w.Write(cached.Value)
 			log.Println("L1 HIT:", key)
+			totalL1Hits.Inc()
 			return
 		}
 
@@ -130,6 +203,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 		_, _ = w.Write(value)
 		log.Println("L2 HIT:", key)
+		totalL2Hits.Inc()
 		return
 	}
 
@@ -138,6 +212,9 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Backend
+
+	totalBackendRequests.Inc()
+
 	rw := &ResponseWriter{
 		ResponseWriter: w,
 	}
@@ -145,6 +222,9 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	backendStart := time.Now()
 
 	h.proxy.ServeHTTP(rw, r)
+
+	duration := time.Since(backendStart)
+	backendDuration.Observe(duration.Seconds())
 
 	log.Println(
 		"Backend call duration:",
@@ -167,4 +247,5 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h.mu.Unlock()
 
 	log.Println("CACHE MISS:", key)
+	totalCacheMisses.Inc()
 }
