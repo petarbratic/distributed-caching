@@ -13,10 +13,6 @@ func main() {
 
 	backendURL := os.Getenv("BACKEND_URL")
 
-	if backendURL == "" {
-		backendURL = "http://localhost:8081"
-	}
-
 	handler, err := handlers.NewHandler(backendURL)
 
 	if err != nil {

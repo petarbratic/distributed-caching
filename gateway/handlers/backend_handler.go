@@ -13,9 +13,14 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
+type KeyValue struct {
+	Value      string
+	Expiration time.Time
+}
+
 type Handler struct {
 	proxy *httputil.ReverseProxy
-	cache map[string][]byte
+	cache map[string]KeyValue
 	mu    sync.RWMutex
 	redis *redis.Client
 }
@@ -51,7 +56,7 @@ func NewHandler(target string) (*Handler, error) {
 	})
 
 	return &Handler{proxy: proxy,
-		cache: make(map[string][]byte),
+		cache: make(map[string]KeyValue),
 		redis: rdb,
 	}, nil
 }
@@ -62,39 +67,73 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	ctx := r.Context()
 	key := r.URL.RequestURI()
+	ttlL1 := time.Second
+	ttlL2 := 2 * time.Second
 
+	defer func() {
+		log.Printf("Request total time: %v, for key: %v", time.Since(start), key)
+	}()
+
+	// L1 Cache
 	h.mu.RLock()
-	if data, ok := h.cache[key]; ok {
-		h.mu.RUnlock()
-		w.Write(data)
-		log.Println("L1 HIT, total time: ", time.Since(start))
-		return
-	}
+	cached, ok := h.cache[key]
 	h.mu.RUnlock()
 
+	if ok {
+		if time.Now().Before(cached.Expiration) {
+			_, _ = w.Write([]byte(cached.Value))
+			log.Println("L1 HIT: ", key)
+			return
+		}
+
+		h.mu.Lock()
+		delete(h.cache, key)
+		h.mu.Unlock()
+
+		log.Println("L1 Expired: ", key)
+	}
+
+	// L2 Redis
 	val, err := h.redis.Get(ctx, key).Bytes()
 	if err == nil {
+		// Write to L1
 		h.mu.Lock()
-		h.cache[key] = val
+		h.cache[key] = KeyValue{
+			Value:      string(val),
+			Expiration: time.Now().Add(ttlL1),
+		}
 		h.mu.Unlock()
-		w.Write(val)
-		log.Println("L2 HIT, total time: ", time.Since(start))
+
+		_, _ = w.Write(val)
+		log.Println("L2 HIT: ", key)
 		return
 	}
 
+	if err != redis.Nil {
+		log.Println("Redis expired for key: ", key)
+	}
+
+	// Backend
 	rw := &ResponseWriter{
 		ResponseWriter: w,
 	}
 
-	log.Println("Backend call, total time: ", time.Since(start))
+	backendStart := time.Now()
 	h.proxy.ServeHTTP(rw, r)
+	log.Println("Backend call duration: ", time.Since(backendStart))
 
-	if err := h.redis.Set(ctx, key, rw.body, 0).Err(); err != nil {
+	// Write to L2
+	if err := h.redis.Set(ctx, key, rw.body, ttlL2).Err(); err != nil {
 		log.Println("Redis SET error:", err)
 	}
 
+	// Write to L1
 	h.mu.Lock()
-	h.cache[key] = rw.body
+	h.cache[key] = KeyValue{
+		Value:      string(rw.body),
+		Expiration: time.Now().Add(ttlL1),
+	}
 	h.mu.Unlock()
 
+	log.Println("CACHE MISS")
 }

@@ -2,12 +2,14 @@ import http from 'k6/http';
 import { check, sleep } from 'k6';
 
 export const options = {
-  vus: 20,
-  duration: '10s',
+  vus: 3,
+  duration: '20s',
 };
 
 export default function () {
-  const res = http.get('http://localhost:8080/api/backend/1090');
+  const id = Math.floor(Math.random() * 5) + 2000;
+
+  const res = http.get(`http://localhost:8080/api/backend/${id}`);
 
   check(res, {
     'status 200': (r) => r.status === 200,
