@@ -15,7 +15,10 @@ import (
 func main() {
 
 	service := &service.Service{}
-	handler := &handler.Handler{Service: service}
+	handler := &handler.Handler{
+		Service:   service,
+		Semaphore: make(chan struct{}, 3),
+	}
 
 	r := mux.NewRouter()
 	r.HandleFunc("/{id}", handler.Get).Methods("GET")
