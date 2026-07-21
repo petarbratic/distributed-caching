@@ -2,12 +2,15 @@ import http from 'k6/http';
 import { check, sleep } from 'k6';
 
 export const options = {
-  vus: 5,
-  duration: '90s',
+  vus: 20,
+  duration: '60s',
 };
 
+const firstKey = 1;
+const keyCount = 10;
+
 export default function () {
-  const id = Math.floor(Math.random() * 5) + 2000;
+  const id = firstKey + Math.floor(Math.random() * keyCount);
 
   const res = http.get(`http://localhost:8080/api/backend/${id}`);
 

@@ -3,10 +3,12 @@ package handler
 import (
 	"backend/service"
 	"encoding/json"
+
 	//"github.com/google/uuid"
-	"github.com/gorilla/mux"
 	"log"
 	"net/http"
+
+	"github.com/gorilla/mux"
 )
 
 type Handler struct {

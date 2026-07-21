@@ -155,8 +155,8 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	key := r.URL.RequestURI()
 
-	ttlL1 := time.Second
-	ttlL2 := 2 * time.Second
+	ttlL1 := 2 * time.Second
+	ttlL2 := 4 * time.Second
 
 	defer func() {
 		duration := time.Since(start)

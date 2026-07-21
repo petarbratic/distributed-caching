@@ -1,0 +1,52 @@
+import http from 'k6/http';
+import { check, sleep } from 'k6';
+
+export const options = {
+  vus: 20,
+  duration: '60s',
+};
+
+const firstKey = 1;
+const keyCount = 10;
+const skew = 0.8;
+
+const weights = [];
+
+for (let rank = 1; rank <= keyCount; rank++) {
+  weights.push(1 / Math.pow(rank, skew));
+}
+
+const totalWeight = weights.reduce((sum, weight) => sum + weight, 0);
+
+const cumulativeProbabilities = [];
+
+let cumulativeSum = 0;
+
+for (const weight of weights) {
+  cumulativeSum += weight / totalWeight;
+  cumulativeProbabilities.push(cumulativeSum);
+}
+
+function selectZipfKey() {
+  const randomValue = Math.random();
+
+  for (let index = 0; index < cumulativeProbabilities.length; index++) {
+    if (randomValue <= cumulativeProbabilities[index]) {
+      return firstKey + index;
+    }
+  }
+
+  return firstKey + keyCount - 1;
+}
+
+export default function () {
+  const id = selectZipfKey();
+
+  const res = http.get(`http://localhost:8080/api/backend/${id}`);
+
+  check(res, {
+    'status 200': (r) => r.status === 200,
+  });
+
+  sleep(0.5);
+}
