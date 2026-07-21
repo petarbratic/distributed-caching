@@ -9,7 +9,15 @@ import (
 	"sync"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/redis/go-redis/v9"
+)
+
+var totalRequests = prometheus.NewCounter(
+	prometheus.CounterOpts{
+		Name: "gateway_http_requests_total",
+		Help: "Total number of HTTP requests gateway received.",
+	},
 )
 
 type KeyValue struct {
@@ -71,6 +79,9 @@ func NewHandler(target string) (*Handler, error) {
 }
 
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+
+	totalRequests.Inc()
+
 	start := time.Now()
 
 	ctx := r.Context()

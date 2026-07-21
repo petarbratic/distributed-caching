@@ -6,10 +6,15 @@ import (
 	"os"
 
 	"github.com/gorilla/mux"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/cors"
 )
 
 func main() {
+
+	prometheus.MustRegister(totalRequests)
+
 	backendURL := os.Getenv("BACKEND_URL")
 
 	handler, err := NewHandler(backendURL)
@@ -18,6 +23,7 @@ func main() {
 	}
 
 	r := mux.NewRouter()
+	r.Handle("/metrics", promhttp.Handler())
 
 	api := r.PathPrefix("/api").Subrouter()
 	api.PathPrefix("/backend").Handler(handler)
