@@ -90,3 +90,24 @@ func (h *Handler) removeL2LRU(ctx context.Context, count int64) {
 		log.Println("L2 EVICTED: ", key)
 	}
 }
+
+func (h *Handler) clearL2(ctx context.Context) error {
+	keys, err := h.redis.ZRange(ctx, l2LRUKey, 0, -1).Result()
+	if err != nil {
+		return err
+	}
+
+	if len(keys) > 0 {
+		if err := h.redis.Del(ctx, keys...).Err(); err != nil {
+			return err
+		}
+	}
+
+	if err := h.redis.Del(ctx, l2LRUKey).Err(); err != nil {
+		return err
+	}
+
+	log.Println("L2 cache cleared")
+
+	return nil
+}

@@ -70,6 +70,11 @@ func NewHandler(target string) (*Handler, error) {
 
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
+	if r.URL.Path == "/api/cache-config" {
+		h.handleCacheConfig(w, r)
+		return
+	}
+
 	totalUserRequests.Inc()
 
 	start := time.Now()

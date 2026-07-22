@@ -74,3 +74,13 @@ func (h *Handler) removeL1LRU() {
 
 	log.Println("L1 EVICTED: ", entry.Key)
 }
+
+func (h *Handler) clearL1() {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+
+	clear(h.cache)
+	h.cacheOrder.Init()
+
+	log.Println("L1 cache cleared")
+}
