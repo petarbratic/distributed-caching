@@ -7,7 +7,7 @@ export const options = {
 };
 
 const firstKey = 1;
-const keyCount = 10;
+const keyCount = 30;
 const skew = 0.8;
 
 const weights = [];
