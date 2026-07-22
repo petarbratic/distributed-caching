@@ -1,10 +1,7 @@
 package service
 
 import (
-	//"encoding/json"
 	"fmt"
-	//"log"
-	//"net/http"
 	"time"
 )
 
@@ -16,15 +13,17 @@ type Entity struct {
 	Name string `json:"name"`
 }
 
-func (service *Service) FindEntity(id string) (*Entity, error) {
+func (service *Service) FindEntity(
+	id string,
+	baseLatency time.Duration,
+) (*Entity, error) {
 
 	// Simulating data fetching here
 	if id == "" {
 		return nil, fmt.Errorf("Invalid id")
 	}
 
-	// 2 seconds (for now)
-	time.Sleep(2 * time.Second)
+	time.Sleep(baseLatency)
 
 	entity := &Entity{
 		ID:   id,

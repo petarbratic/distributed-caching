@@ -3,7 +3,7 @@
 <button (click)="load()">Call API</button>
 
 <main class="container">
-    <h1>Cache Configuration</h1>
+    <h1>System Configuration</h1>
 
     <p>
         Changing the configuration will clear all existing data from L1 and L2 caches.
@@ -54,6 +54,25 @@
             <input id="semaphoreSize" name="semaphoreSize" type="number" min="1" required
                 [(ngModel)]="cacheConfig.semaphoreSize" />
         </div>
+
+        <div class="form-group">
+            <label for="concurrentDelayMs">
+                Delay per concurrent backend request in milliseconds
+            </label>
+
+            <input id="concurrentDelayMs" type="number" min="0" name="concurrentDelayMs" required
+                [(ngModel)]="cacheConfig.concurrentDelayMs" />
+        </div>
+
+        <div class="form-group">
+            <label for="baseLatencyMs">
+                Base backend latency in milliseconds
+            </label>
+
+            <input id="baseLatencyMs" type="number" min="0" name="baseLatencyMs" required [(ngModel)]="cacheConfig.baseLatencyMs" />
+        </div>
+
+
 
         <p class="validation-error" *ngIf="
         cacheConfig.l1MaxEntries > 0 &&

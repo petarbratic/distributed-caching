@@ -7,7 +7,8 @@ export const options = {
 };
 
 const firstKey = 1;
-const keyCount = 10;
+const keyCount = 30;
+const sleepConstant = 0.5;
 
 export default function () {
   const id = firstKey + Math.floor(Math.random() * keyCount);
@@ -18,5 +19,5 @@ export default function () {
     'status 200': (r) => r.status === 200,
   });
 
-  sleep(1);
+  sleep(sleepConstant);
 }

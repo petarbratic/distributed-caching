@@ -64,15 +64,17 @@ func (h *Handler) updateCacheConfig(
 		return
 	}
 
-	if err := h.updateBackendSemaphore(
+	if err := h.updateBackendConfig(
 		r.Context(),
 		newConfig.SemaphoreSize,
+		newConfig.ConcurrentDelayMs,
+		newConfig.BaseLatencyMs,
 	); err != nil {
-		log.Println("Failed to update backend semaphore:", err)
+		log.Println("Failed to update backend config:", err)
 
 		http.Error(
 			w,
-			"Failed to update backend semaphore",
+			"Failed to update backend config",
 			http.StatusBadGateway,
 		)
 		return
@@ -94,12 +96,14 @@ func (h *Handler) updateCacheConfig(
 	}
 
 	log.Printf(
-		"Cache configuration changed: L1=%d, L2=%d, TTL L1=%d, TTL L2=%d, Semaphore size = %d",
+		"Cache configuration changed: L1=%d, L2=%d, TTL L1=%d, TTL L2=%d, Semaphore size = %d, Concurent=%d, Base=%d",
 		newConfig.L1MaxEntries,
 		newConfig.L2MaxEntries,
 		newConfig.L1TTLSeconds,
 		newConfig.L2TTLSeconds,
 		newConfig.SemaphoreSize,
+		newConfig.ConcurrentDelayMs,
+		newConfig.BaseLatencyMs,
 	)
 
 	w.Header().Set("Content-Type", "application/json")

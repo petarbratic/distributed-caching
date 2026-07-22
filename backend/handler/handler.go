@@ -15,17 +15,23 @@ import (
 type Handler struct {
 	Service *service.Service
 
-	Semaphore   chan struct{}
-	semaphoreMu sync.RWMutex
+	Semaphore chan struct{}
+
+	ConcurrentDelayMs int
+	BaseLatencyMs     int
+
+	configMu sync.RWMutex
 
 	Active int64
 }
 
 func (handler *Handler) Get(writer http.ResponseWriter, req *http.Request) {
 
-	handler.semaphoreMu.RLock()
+	handler.configMu.RLock()
 	semaphore := handler.Semaphore
-	handler.semaphoreMu.RUnlock()
+	concurrentDelayMs := handler.ConcurrentDelayMs
+	baseLatencyMs := handler.BaseLatencyMs
+	handler.configMu.RUnlock()
 
 	semaphore <- struct{}{}
 	defer func() {
@@ -35,13 +41,19 @@ func (handler *Handler) Get(writer http.ResponseWriter, req *http.Request) {
 	active := atomic.AddInt64(&handler.Active, 1)
 	defer atomic.AddInt64(&handler.Active, -1)
 
-	delay := time.Duration(active) * 200 * time.Millisecond
-	time.Sleep(delay)
+	concurrentDelay :=
+		time.Duration(active) *
+			time.Duration(concurrentDelayMs) *
+			time.Millisecond
+	time.Sleep(concurrentDelay)
 
 	id := mux.Vars(req)["id"]
 	log.Printf("Entity with id %s", id)
 
-	entity, err := handler.Service.FindEntity(id)
+	entity, err := handler.Service.FindEntity(
+		id,
+		time.Duration(baseLatencyMs)*time.Millisecond,
+	)
 
 	writer.Header().Set("Content-Type", "application/json")
 
@@ -57,11 +69,11 @@ func (handler *Handler) Get(writer http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func (handler *Handler) UpdateSemaphore(
+func (handler *Handler) UpdateConfig(
 	writer http.ResponseWriter,
 	req *http.Request,
 ) {
-	var config SemaphoreConfig
+	var config BackendConfig
 
 	if err := json.NewDecoder(req.Body).Decode(&config); err != nil {
 		http.Error(
@@ -81,22 +93,46 @@ func (handler *Handler) UpdateSemaphore(
 		return
 	}
 
-	handler.semaphoreMu.Lock()
+	if config.ConcurrentDelayMs < 0 {
+		http.Error(
+			writer,
+			"Concurrent delay must not be negative",
+			http.StatusBadRequest,
+		)
+		return
+	}
+
+	if config.BaseLatencyMs < 0 {
+		http.Error(
+			writer,
+			"Base latency must not be negative",
+			http.StatusBadRequest,
+		)
+		return
+	}
+
+	handler.configMu.Lock()
+
 	handler.Semaphore = make(
 		chan struct{},
 		config.SemaphoreSize,
 	)
-	handler.semaphoreMu.Unlock()
+	handler.ConcurrentDelayMs = config.ConcurrentDelayMs
+	handler.BaseLatencyMs = config.BaseLatencyMs
+
+	handler.configMu.Unlock()
 
 	log.Printf(
-		"Semaphore size changed to %d",
+		"Backend configuration changed: semaphore=%d, concurrentDelay=%dms, baseLatency=%dms",
 		config.SemaphoreSize,
+		config.ConcurrentDelayMs,
+		config.BaseLatencyMs,
 	)
 
 	writer.Header().Set("Content-Type", "application/json")
 	writer.WriteHeader(http.StatusOK)
 
 	if err := json.NewEncoder(writer).Encode(config); err != nil {
-		log.Println("Failed to encode semaphore config:", err)
+		log.Println("Failed to encode backend config:", err)
 	}
 }

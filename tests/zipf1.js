@@ -2,13 +2,14 @@ import http from 'k6/http';
 import { check, sleep } from 'k6';
 
 export const options = {
-  vus: 20,
-  duration: '60s',
+  vus: 50,
+  duration: '120s',
 };
-
 const firstKey = 1;
-const keyCount = 30;
-const skew = 0.8;
+const keyCount = 2500;
+const skew = 2.2;
+const sleepConstant = 0.5;
+
 
 const weights = [];
 
@@ -48,5 +49,5 @@ export default function () {
     'status 200': (r) => r.status === 200,
   });
 
-  sleep(0.5);
+  sleep(sleepConstant);
 }

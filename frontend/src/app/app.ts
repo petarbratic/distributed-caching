@@ -17,11 +17,14 @@ export class App implements OnInit {
   id: number = 0;
 
   cacheConfig: CacheConfig = {
-    l1MaxEntries: 0,
-    l2MaxEntries: 0,
-    l1TTLSeconds: 0,
-    l2TTLSeconds: 0,
-    semaphoreSize: 0
+    l1MaxEntries: 3,
+    l2MaxEntries: 10,
+    l1TTLSeconds: 2,
+    l2TTLSeconds: 4,
+
+    semaphoreSize: 3,
+    concurrentDelayMs: 200,
+    baseLatencyMs: 2000
   };
 
   loading = false;

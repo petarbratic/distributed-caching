@@ -8,22 +8,28 @@ import (
 	"net/http"
 )
 
-type SemaphoreConfig struct {
-	SemaphoreSize int `json:"semaphoreSize"`
+type BackendConfig struct {
+	SemaphoreSize     int `json:"semaphoreSize"`
+	ConcurrentDelayMs int `json:"concurrentDelayMs"`
+	BaseLatencyMs     int `json:"baseLatencyMs"`
 }
 
-func (h *Handler) updateBackendSemaphore(
+func (h *Handler) updateBackendConfig(
 	ctx context.Context,
 	size int,
+	concurrent int,
+	base int,
 ) error {
-	body, err := json.Marshal(SemaphoreConfig{
-		SemaphoreSize: size,
+	body, err := json.Marshal(BackendConfig{
+		SemaphoreSize:     size,
+		ConcurrentDelayMs: concurrent,
+		BaseLatencyMs:     base,
 	})
 	if err != nil {
 		return err
 	}
 
-	url := h.backendURL + "/config/semaphore"
+	url := h.backendURL + "/config"
 
 	req, err := http.NewRequestWithContext(
 		ctx,

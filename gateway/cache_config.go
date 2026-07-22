@@ -7,5 +7,7 @@ type CacheConfig struct {
 	L1TTLSeconds int `json:"l1TTLSeconds"`
 	L2TTLSeconds int `json:"l2TTLSeconds"`
 
-	SemaphoreSize int `json:"semaphoreSize"`
+	SemaphoreSize     int `json:"semaphoreSize"`
+	ConcurrentDelayMs int `json:"concurrentDelayMs"`
+	BaseLatencyMs     int `json:"baseLatencyMs"`
 }
