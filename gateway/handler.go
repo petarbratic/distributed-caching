@@ -1,6 +1,7 @@
 package main
 
 import (
+	"container/list"
 	"log"
 	"net/http"
 	"net/http/httputil"
@@ -88,16 +89,31 @@ var backendDuration = prometheus.NewHistogram(
 	},
 )
 
+type CacheConfig struct {
+	L1MaxEntries int `json:"l1MaxEntries"`
+	L2MaxEntries int `json:"l2MaxEntries"`
+}
+
 type KeyValue struct {
 	Value      []byte
 	Expiration time.Time
 }
 
+type CacheEntry struct {
+	Key   string
+	Value KeyValue
+}
+
 type Handler struct {
 	proxy *httputil.ReverseProxy
-	cache map[string]KeyValue
-	mu    sync.RWMutex
+
+	cache      map[string]*list.Element
+	cacheOrder *list.List
+	mu         sync.Mutex
+
 	redis *redis.Client
+
+	cacheConfig CacheConfig
 }
 
 type ResponseWriter struct {
@@ -140,9 +156,14 @@ func NewHandler(target string) (*Handler, error) {
 	})
 
 	return &Handler{
-		proxy: proxy,
-		cache: make(map[string]KeyValue),
-		redis: rdb,
+		proxy:      proxy,
+		cache:      make(map[string]*list.Element),
+		cacheOrder: list.New(),
+		redis:      rdb,
+		cacheConfig: CacheConfig{
+			L1MaxEntries: 100,
+			L2MaxEntries: 1000,
+		},
 	}, nil
 }
 
@@ -171,35 +192,23 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}()
 
 	// L1 cache
-	h.mu.RLock()
-	cached, found := h.cache[key]
-	h.mu.RUnlock()
+	if cached, found := h.getL1(key); found {
+		_, _ = w.Write(cached.Value)
 
-	if found {
-		if time.Now().Before(cached.Expiration) {
-			_, _ = w.Write(cached.Value)
-			log.Println("L1 HIT:", key)
-			totalL1Hits.Inc()
-			return
-		}
+		log.Println("L1 HIT: ", key)
+		totalL1Hits.Inc()
 
-		h.mu.Lock()
-		delete(h.cache, key)
-		h.mu.Unlock()
-
-		log.Println("L1 EXPIRED:", key)
+		return
 	}
 
 	// L2 Redis
 	value, err := h.redis.Get(ctx, key).Bytes()
 
 	if err == nil {
-		h.mu.Lock()
-		h.cache[key] = KeyValue{
+		h.setL1(key, KeyValue{
 			Value:      value,
 			Expiration: time.Now().Add(ttlL1),
-		}
-		h.mu.Unlock()
+		})
 
 		_, _ = w.Write(value)
 		log.Println("L2 HIT:", key)
@@ -239,13 +248,81 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// L1 write
 	bodyCopy := append([]byte(nil), rw.body...)
 
-	h.mu.Lock()
-	h.cache[key] = KeyValue{
+	h.setL1(key, KeyValue{
 		Value:      bodyCopy,
 		Expiration: time.Now().Add(ttlL1),
-	}
-	h.mu.Unlock()
+	})
 
 	log.Println("CACHE MISS:", key)
 	totalCacheMisses.Inc()
+}
+
+func (h *Handler) getL1(key string) (KeyValue, bool) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+
+	element, found := h.cache[key]
+	if !found {
+		return KeyValue{}, false
+	}
+
+	entry := element.Value.(*CacheEntry)
+
+	if time.Now().After(entry.Value.Expiration) {
+		delete(h.cache, key)
+		h.cacheOrder.Remove(element)
+
+		log.Println("L1 Expired: ", key)
+
+		return KeyValue{}, false
+	}
+	h.cacheOrder.MoveToFront(element)
+
+	return entry.Value, true
+}
+
+func (h *Handler) setL1(key string, value KeyValue) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+
+	maxEntries := h.cacheConfig.L1MaxEntries
+
+	if maxEntries <= 0 {
+		return
+	}
+
+	if element, found := h.cache[key]; found {
+		entry := element.Value.(*CacheEntry)
+		entry.Value = value
+
+		h.cacheOrder.MoveToFront(element)
+		return
+	}
+
+	if len(h.cache) >= maxEntries {
+		h.removeLRU()
+	}
+
+	entry := &CacheEntry{
+		Key:   key,
+		Value: value,
+	}
+
+	element := h.cacheOrder.PushFront(entry)
+	h.cache[key] = element
+
+}
+
+func (h *Handler) removeLRU() {
+	element := h.cacheOrder.Back()
+	if element == nil {
+		return
+	}
+
+	entry := element.Value.(*CacheEntry)
+
+	delete(h.cache, entry.Key)
+	h.cacheOrder.Remove(element)
+
+	log.Println("L1 EVICTED: ", entry.Key)
 }
