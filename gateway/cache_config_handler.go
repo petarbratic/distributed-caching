@@ -6,24 +6,10 @@ import (
 	"net/http"
 )
 
-func (h *Handler) handleCacheConfig(w http.ResponseWriter, r *http.Request) {
-	switch r.Method {
-	case http.MethodGet:
-		h.getCacheConfig(w)
-
-	case http.MethodPut:
-		h.updateCacheConfig(w, r)
-
-	default:
-		http.Error(
-			w,
-			"Method not allowed",
-			http.StatusMethodNotAllowed,
-		)
-	}
-}
-
-func (h *Handler) getCacheConfig(w http.ResponseWriter) {
+func (h *Handler) getCacheConfig(
+	w http.ResponseWriter,
+	r *http.Request,
+) {
 	w.Header().Set("Content-Type", "application/json")
 
 	if err := json.NewEncoder(w).Encode(h.cacheConfig); err != nil {
@@ -36,8 +22,10 @@ func (h *Handler) getCacheConfig(w http.ResponseWriter) {
 	}
 }
 
-func (h *Handler) updateCacheConfig(w http.ResponseWriter, r *http.Request) {
-
+func (h *Handler) updateCacheConfig(
+	w http.ResponseWriter,
+	r *http.Request,
+) {
 	var newConfig CacheConfig
 
 	if err := json.NewDecoder(r.Body).Decode(&newConfig); err != nil {

@@ -29,10 +29,22 @@ func main() {
 	}
 
 	r := mux.NewRouter()
+
 	r.Handle("/metrics", promhttp.Handler())
 
 	api := r.PathPrefix("/api").Subrouter()
+
 	api.PathPrefix("/backend").Handler(handler)
+
+	api.HandleFunc(
+		"/cache-config",
+		handler.getCacheConfig,
+	).Methods(http.MethodGet)
+
+	api.HandleFunc(
+		"/cache-config",
+		handler.updateCacheConfig,
+	).Methods(http.MethodPut)
 
 	c := cors.New(cors.Options{
 		AllowedOrigins: []string{"http://localhost:4200"},
