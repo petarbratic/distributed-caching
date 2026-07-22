@@ -5,11 +5,9 @@ import (
 	"backend/service"
 
 	"github.com/gorilla/mux"
-	//"gorm.io/driver/postgres"
-	//"gorm.io/gorm"
+
 	"log"
 	"net/http"
-	//"os"
 )
 
 func main() {
@@ -22,6 +20,7 @@ func main() {
 
 	r := mux.NewRouter()
 	r.HandleFunc("/{id}", handler.Get).Methods("GET")
+	r.HandleFunc("/config/semaphore", handler.UpdateSemaphore).Methods("PUT")
 
 	log.Println("Backend running on: 8081!")
 	if err := http.ListenAndServe(":8081", r); err != nil {

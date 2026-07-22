@@ -64,6 +64,20 @@ func (h *Handler) updateCacheConfig(
 		return
 	}
 
+	if err := h.updateBackendSemaphore(
+		r.Context(),
+		newConfig.SemaphoreSize,
+	); err != nil {
+		log.Println("Failed to update backend semaphore:", err)
+
+		http.Error(
+			w,
+			"Failed to update backend semaphore",
+			http.StatusBadGateway,
+		)
+		return
+	}
+
 	h.cacheConfig = newConfig
 
 	h.clearL1()
@@ -80,9 +94,12 @@ func (h *Handler) updateCacheConfig(
 	}
 
 	log.Printf(
-		"Cache configuration changed: L1=%d, L2=%d",
+		"Cache configuration changed: L1=%d, L2=%d, TTL L1=%d, TTL L2=%d, Semaphore size = %d",
 		newConfig.L1MaxEntries,
 		newConfig.L2MaxEntries,
+		newConfig.L1TTLSeconds,
+		newConfig.L2TTLSeconds,
+		newConfig.SemaphoreSize,
 	)
 
 	w.Header().Set("Content-Type", "application/json")

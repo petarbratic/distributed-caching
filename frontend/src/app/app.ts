@@ -18,14 +18,17 @@ export class App implements OnInit {
 
   cacheConfig: CacheConfig = {
     l1MaxEntries: 0,
-    l2MaxEntries: 0
+    l2MaxEntries: 0,
+    l1TTLSeconds: 0,
+    l2TTLSeconds: 0,
+    semaphoreSize: 0
   };
 
   loading = false;
   successMessage = '';
   errorMessage = '';
 
-  constructor(private api: Api) {}
+  constructor(private api: Api) { }
 
   ngOnInit(): void {
     this.loadCacheConfig();
@@ -79,6 +82,26 @@ export class App implements OnInit {
     ) {
       this.errorMessage =
         'L1 size cannot be greater than L2 size.';
+      return;
+    }
+
+    if (this.cacheConfig.l1TTLSeconds <= 0) {
+      this.errorMessage = 'L1 TTL must be greater than 0.';
+      return;
+    }
+
+    if (this.cacheConfig.l2TTLSeconds <= 0) {
+      this.errorMessage = 'L2 TTL must be greater than 0.';
+      return;
+    }
+
+    if (this.cacheConfig.l1TTLSeconds > this.cacheConfig.l2TTLSeconds) {
+      this.errorMessage = 'L1 TTL cannot be greater than L2 TTL.';
+      return;
+    }
+
+    if (this.cacheConfig.semaphoreSize <= 0) {
+      this.errorMessage = 'Semaphore size must be greater than 0.';
       return;
     }
 

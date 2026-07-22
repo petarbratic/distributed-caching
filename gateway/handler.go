@@ -25,6 +25,9 @@ type Handler struct {
 	redis *redis.Client
 
 	cacheConfig CacheConfig
+
+	backendURL string
+	httpClient *http.Client
 }
 
 func NewHandler(target string) (*Handler, error) {
@@ -62,8 +65,15 @@ func NewHandler(target string) (*Handler, error) {
 		cacheOrder: list.New(),
 		redis:      rdb,
 		cacheConfig: CacheConfig{
-			L1MaxEntries: 3,
-			L2MaxEntries: 10,
+			L1MaxEntries:  3,
+			L2MaxEntries:  10,
+			L1TTLSeconds:  2,
+			L2TTLSeconds:  4,
+			SemaphoreSize: 3,
+		},
+		backendURL: strings.TrimRight(target, "/"),
+		httpClient: &http.Client{
+			Timeout: 5 * time.Second,
 		},
 	}, nil
 }
@@ -77,8 +87,8 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	key := r.URL.RequestURI()
 
-	ttlL1 := 2 * time.Second
-	ttlL2 := 4 * time.Second
+	ttlL1 := time.Duration(h.cacheConfig.L1TTLSeconds) * time.Second
+	ttlL2 := time.Duration(h.cacheConfig.L2TTLSeconds) * time.Second
 
 	defer func() {
 		duration := time.Since(start)
@@ -137,6 +147,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	log.Printf(
 		"Backend call duration: %v, for key: %v",
 		time.Since(backendStart),
+		key,
 	)
 
 	// L2 write
