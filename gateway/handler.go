@@ -2,9 +2,6 @@ package main
 
 import (
 	"container/list"
-	"context"
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/redis/go-redis/v9"
 	"log"
 	"net/http"
 	"net/http/httputil"
@@ -12,99 +9,11 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/redis/go-redis/v9"
 )
 
 const l2LRUKey = "gateway:l2:lru"
-
-var totalUserRequests = prometheus.NewCounter(
-	prometheus.CounterOpts{
-		Name: "gateway_http_requests_total",
-		Help: "Total number of HTTP requests gateway received.",
-	},
-)
-
-var totalBackendRequests = prometheus.NewCounter(
-	prometheus.CounterOpts{
-		Name: "gateway_backend_requests_total",
-		Help: "Total number of HTTP requests sent to backend.",
-	},
-)
-
-var totalL1Hits = prometheus.NewCounter(
-	prometheus.CounterOpts{
-		Name: "gateway_l1_hits_total",
-		Help: "Total number of L1 hits.",
-	},
-)
-
-var totalL2Hits = prometheus.NewCounter(
-	prometheus.CounterOpts{
-		Name: "gateway_l2_hits_total",
-		Help: "Total number of L2 hits.",
-	},
-)
-
-var totalCacheMisses = prometheus.NewCounter(
-	prometheus.CounterOpts{
-		Name: "gateway_cache_miss_total",
-		Help: "Total number of cache misses.",
-	},
-)
-
-var requestDuration = prometheus.NewHistogram(
-	prometheus.HistogramOpts{
-		Name: "gateway_request_duration_seconds",
-		Help: "Total duration of processing a user request (in seconds).",
-		Buckets: []float64{
-			0.001,
-			0.005,
-			0.01,
-			0.025,
-			0.05,
-			0.1,
-			0.25,
-			0.5,
-			1,
-			2,
-			5,
-		},
-	},
-)
-
-var backendDuration = prometheus.NewHistogram(
-	prometheus.HistogramOpts{
-		Name: "gateway_backend_duration_seconds",
-		Help: "Total duration of backend processing a user request (in seconds).",
-		Buckets: []float64{
-			0.001,
-			0.005,
-			0.01,
-			0.025,
-			0.05,
-			0.1,
-			0.25,
-			0.5,
-			1,
-			2,
-			5,
-		},
-	},
-)
-
-type CacheConfig struct {
-	L1MaxEntries int `json:"l1MaxEntries"`
-	L2MaxEntries int `json:"l2MaxEntries"`
-}
-
-type KeyValue struct {
-	Value      []byte
-	Expiration time.Time
-}
-
-type CacheEntry struct {
-	Key   string
-	Value KeyValue
-}
 
 type Handler struct {
 	proxy *httputil.ReverseProxy
@@ -116,16 +25,6 @@ type Handler struct {
 	redis *redis.Client
 
 	cacheConfig CacheConfig
-}
-
-type ResponseWriter struct {
-	http.ResponseWriter
-	body []byte
-}
-
-func (rw *ResponseWriter) Write(data []byte) (int, error) {
-	rw.body = append(rw.body, data...)
-	return rw.ResponseWriter.Write(data)
 }
 
 func NewHandler(target string) (*Handler, error) {
@@ -253,157 +152,4 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	log.Println("CACHE MISS:", key)
 	totalCacheMisses.Inc()
-}
-
-func (h *Handler) getL1(key string) (KeyValue, bool) {
-	h.mu.Lock()
-	defer h.mu.Unlock()
-
-	element, found := h.cache[key]
-	if !found {
-		return KeyValue{}, false
-	}
-
-	entry := element.Value.(*CacheEntry)
-
-	if time.Now().After(entry.Value.Expiration) {
-		delete(h.cache, key)
-		h.cacheOrder.Remove(element)
-
-		log.Println("L1 Expired: ", key)
-
-		return KeyValue{}, false
-	}
-	h.cacheOrder.MoveToFront(element)
-
-	return entry.Value, true
-}
-
-func (h *Handler) setL1(key string, value KeyValue) {
-	h.mu.Lock()
-	defer h.mu.Unlock()
-
-	maxEntries := h.cacheConfig.L1MaxEntries
-
-	if maxEntries <= 0 {
-		return
-	}
-
-	if element, found := h.cache[key]; found {
-		entry := element.Value.(*CacheEntry)
-		entry.Value = value
-
-		h.cacheOrder.MoveToFront(element)
-		return
-	}
-
-	if len(h.cache) >= maxEntries {
-		h.removeL1LRU()
-	}
-
-	entry := &CacheEntry{
-		Key:   key,
-		Value: value,
-	}
-
-	element := h.cacheOrder.PushFront(entry)
-	h.cache[key] = element
-
-}
-
-func (h *Handler) removeL1LRU() {
-	element := h.cacheOrder.Back()
-	if element == nil {
-		return
-	}
-
-	entry := element.Value.(*CacheEntry)
-
-	delete(h.cache, entry.Key)
-	h.cacheOrder.Remove(element)
-
-	log.Println("L1 EVICTED: ", entry.Key)
-}
-
-func (h *Handler) getL2(ctx context.Context, key string) ([]byte, bool) {
-	value, err := h.redis.Get(ctx, key).Bytes()
-
-	if err == redis.Nil {
-		h.redis.ZRem(ctx, l2LRUKey, key)
-		return nil, false
-	}
-
-	if err != nil {
-		log.Println("Redis GET error: ", err)
-		return nil, false
-	}
-
-	err = h.redis.ZAdd(ctx, l2LRUKey, redis.Z{
-		Score:  float64(time.Now().UnixNano()),
-		Member: key,
-	}).Err()
-
-	if err != nil {
-		log.Println("Redis LRU update error: ", err)
-	}
-
-	return value, true
-}
-
-func (h *Handler) setL2(ctx context.Context, key string,
-	value []byte, ttl time.Duration) {
-	maxEntries := h.cacheConfig.L2MaxEntries
-
-	if maxEntries <= 0 {
-		return
-	}
-
-	err := h.redis.Set(ctx, key, value, ttl).Err()
-	if err != nil {
-		log.Println("Redis SET error: ", err)
-		return
-	}
-
-	err = h.redis.ZAdd(ctx, l2LRUKey, redis.Z{
-		Score:  float64(time.Now().UnixNano()),
-		Member: key,
-	}).Err()
-
-	if err != nil {
-		log.Println("Redis LRU ZADD error: ", err)
-		return
-	}
-
-	count, err := h.redis.ZCard(ctx, l2LRUKey).Result()
-	if err != nil {
-		log.Println("Redis ZCARD error: ", err)
-		return
-	}
-
-	if count > int64(maxEntries) {
-		h.removeL2LRU(ctx, count-int64(maxEntries))
-	}
-}
-
-func (h *Handler) removeL2LRU(ctx context.Context, count int64) {
-	elements, err := h.redis.ZPopMin(ctx, l2LRUKey, count).Result()
-
-	if err != nil {
-		log.Println("Redis ZPOPMIN error: ", err)
-		return
-	}
-
-	for _, element := range elements {
-		key, ok := element.Member.(string)
-		if !ok {
-			continue
-		}
-
-		if err := h.redis.Del(ctx, key).Err(); err != nil {
-			log.Println("Redis DEL error: ", err)
-			continue
-		}
-
-		log.Println("L2 EVICTED: ", key)
-	}
 }
