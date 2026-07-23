@@ -6,8 +6,8 @@ export const options = {
   duration: '120s',
 };
 const firstKey = 1;
-const keyCount = 2500;
-const skew = 2.2;
+const keyCount = 100;
+const skew = 0.8;
 const sleepConstant = 0.5;
 
 
