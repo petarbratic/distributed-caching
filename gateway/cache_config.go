@@ -10,4 +10,7 @@ type CacheConfig struct {
 	SemaphoreSize     int `json:"semaphoreSize"`
 	ConcurrentDelayMs int `json:"concurrentDelayMs"`
 	BaseLatencyMs     int `json:"baseLatencyMs"`
+
+	SingleFlightEnabled bool `json:"singleFlightEnabled"`
+	BackendTimeoutMs    int  `json:"backendTimeoutMs"`
 }

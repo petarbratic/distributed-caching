@@ -96,7 +96,7 @@ func (h *Handler) updateCacheConfig(
 	}
 
 	log.Printf(
-		"Cache configuration changed: L1=%d, L2=%d, TTL L1=%d, TTL L2=%d, Semaphore size = %d, Concurent=%d, Base=%d",
+		"Cache configuration changed: L1=%d, L2=%d, TTL L1=%d, TTL L2=%d, Semaphore size = %d, Concurent=%d, Base=%d, SingleFlightEnabled=%t, BackendTimeout=%d",
 		newConfig.L1MaxEntries,
 		newConfig.L2MaxEntries,
 		newConfig.L1TTLSeconds,
@@ -104,6 +104,8 @@ func (h *Handler) updateCacheConfig(
 		newConfig.SemaphoreSize,
 		newConfig.ConcurrentDelayMs,
 		newConfig.BaseLatencyMs,
+		newConfig.SingleFlightEnabled,
+		newConfig.BackendTimeoutMs,
 	)
 
 	w.Header().Set("Content-Type", "application/json")

@@ -24,7 +24,10 @@ export class App implements OnInit {
 
     semaphoreSize: 3,
     concurrentDelayMs: 200,
-    baseLatencyMs: 2000
+    baseLatencyMs: 2000,
+
+    singleFlightEnabled: false,
+    backendTimeoutMs: 5000,
   };
 
   loading = false;

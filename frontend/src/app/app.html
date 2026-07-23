@@ -69,10 +69,29 @@
                 Base backend latency in milliseconds
             </label>
 
-            <input id="baseLatencyMs" type="number" min="0" name="baseLatencyMs" required [(ngModel)]="cacheConfig.baseLatencyMs" />
+            <input id="baseLatencyMs" type="number" min="0" name="baseLatencyMs" required
+                [(ngModel)]="cacheConfig.baseLatencyMs" />
         </div>
 
+        <!-- SingleFlight Enabled -->
+        <div class="form-group checkbox-group">
+            <label for="singleFlightEnabled">
+                Enable SingleFlight (Request Coalescing)
+            </label>
 
+            <input id="singleFlightEnabled" name="singleFlightEnabled" type="checkbox"
+                [(ngModel)]="cacheConfig.singleFlightEnabled" />
+        </div>
+
+        <!-- Backend Timeout (ms) -->
+        <div class="form-group">
+            <label for="backendTimeoutMs">
+                Backend timeout in milliseconds
+            </label>
+
+            <input id="backendTimeoutMs" name="backendTimeoutMs" type="number" min="1" required
+                [(ngModel)]="cacheConfig.backendTimeoutMs" />
+        </div>
 
         <p class="validation-error" *ngIf="
         cacheConfig.l1MaxEntries > 0 &&

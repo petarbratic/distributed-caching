@@ -7,4 +7,7 @@ export interface CacheConfig {
   semaphoreSize: number;
   concurrentDelayMs: number;
   baseLatencyMs: number;
+
+  singleFlightEnabled: boolean;
+  backendTimeoutMs: number;
 }
