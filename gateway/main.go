@@ -6,20 +6,13 @@ import (
 	"os"
 
 	"github.com/gorilla/mux"
-	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/cors"
 )
 
 func main() {
 
-	prometheus.MustRegister(totalUserRequests)
-	prometheus.MustRegister(totalBackendRequests)
-	prometheus.MustRegister(totalL1Hits)
-	prometheus.MustRegister(totalL2Hits)
-	prometheus.MustRegister(totalCacheMisses)
-	prometheus.MustRegister(requestDuration)
-	prometheus.MustRegister(backendDuration)
+	registerMetrics()
 
 	backendURL := os.Getenv("BACKEND_URL")
 

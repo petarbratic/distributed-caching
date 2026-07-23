@@ -2,6 +2,16 @@ package main
 
 import "github.com/prometheus/client_golang/prometheus"
 
+func registerMetrics() {
+	prometheus.MustRegister(totalUserRequests)
+	prometheus.MustRegister(totalBackendRequests)
+	prometheus.MustRegister(totalL1Hits)
+	prometheus.MustRegister(totalL2Hits)
+	prometheus.MustRegister(totalCacheMisses)
+	prometheus.MustRegister(requestDuration)
+	prometheus.MustRegister(backendDuration)
+}
+
 var totalUserRequests = prometheus.NewCounter(
 	prometheus.CounterOpts{
 		Name: "gateway_http_requests_total",
