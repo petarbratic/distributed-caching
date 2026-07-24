@@ -1,5 +1,6 @@
 @echo off
 
+docker compose restart backend
 docker compose restart gateway
 
 docker compose stop prometheus

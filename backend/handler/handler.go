@@ -39,7 +39,13 @@ func (handler *Handler) Get(writer http.ResponseWriter, req *http.Request) {
 	}()
 
 	active := atomic.AddInt64(&handler.Active, 1)
-	defer atomic.AddInt64(&handler.Active, -1)
+	backendActiveRequests.Inc()
+
+	defer func() {
+		atomic.AddInt64(&handler.Active, -1)
+		backendActiveRequests.Dec()
+		totalBackendRequests.Inc()
+	}()
 
 	concurrentDelay :=
 		time.Duration(active) *

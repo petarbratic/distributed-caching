@@ -15,7 +15,6 @@ type proxyErrorHolder struct {
 type proxyErrorContextKey struct{}
 
 func (h *Handler) fetchFromBackend(r *http.Request) ([]byte, int, error) {
-	totalBackendRequests.Inc()
 
 	backendStart := time.Now()
 
