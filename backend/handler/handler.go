@@ -26,12 +26,12 @@ type Handler struct {
 }
 
 func (handler *Handler) Get(writer http.ResponseWriter, req *http.Request) {
-
 	handler.configMu.RLock()
+	defer handler.configMu.RUnlock()
+
 	semaphore := handler.Semaphore
 	concurrentDelayMs := handler.ConcurrentDelayMs
 	baseLatencyMs := handler.BaseLatencyMs
-	handler.configMu.RUnlock()
 
 	semaphore <- struct{}{}
 	defer func() {
@@ -51,6 +51,7 @@ func (handler *Handler) Get(writer http.ResponseWriter, req *http.Request) {
 		time.Duration(active) *
 			time.Duration(concurrentDelayMs) *
 			time.Millisecond
+
 	time.Sleep(concurrentDelay)
 
 	id := mux.Vars(req)["id"]
