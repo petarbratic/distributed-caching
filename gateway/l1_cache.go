@@ -29,11 +29,9 @@ func (h *Handler) getL1(key string) (KeyValue, bool) {
 	return entry.Value, true
 }
 
-func (h *Handler) setL1(key string, value KeyValue) {
+func (h *Handler) setL1(key string, value KeyValue, maxEntries int) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
-
-	maxEntries := h.cacheConfig.L1MaxEntries
 
 	if maxEntries <= 0 {
 		return

@@ -11,25 +11,55 @@ import (
 	"net/http"
 )
 
+func corsMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(
+		writer http.ResponseWriter,
+		req *http.Request,
+	) {
+		writer.Header().Set(
+			"Access-Control-Allow-Origin",
+			"http://localhost:4200",
+		)
+		writer.Header().Set(
+			"Access-Control-Allow-Methods",
+			"GET, PUT, OPTIONS",
+		)
+		writer.Header().Set(
+			"Access-Control-Allow-Headers",
+			"Content-Type",
+		)
+
+		if req.Method == http.MethodOptions {
+			writer.WriteHeader(http.StatusNoContent)
+			return
+		}
+
+		next.ServeHTTP(writer, req)
+	})
+}
+
 func main() {
 
 	service := &service.Service{}
 	backendHandler := &handler.Handler{
 		Service:           service,
-		Semaphore:         make(chan struct{}, 3),
-		ConcurrentDelayMs: 200,
-		BaseLatencyMs:     2000,
+		Semaphore:         make(chan struct{}, 15),
+		ConcurrentDelayMs: 5,
+		BaseLatencyMs:     200,
 	}
 
 	handler.RegisterMetrics()
 
 	r := mux.NewRouter()
 	r.Handle("/metrics", promhttp.Handler())
-	r.HandleFunc("/{id}", backendHandler.Get).Methods("GET")
+	r.HandleFunc("/config", backendHandler.GetConfig).Methods("GET")
 	r.HandleFunc("/config", backendHandler.UpdateConfig).Methods("PUT")
+	r.HandleFunc("/{id}", backendHandler.Get).Methods("GET")
 
-	log.Println("Backend running on: 8081!")
-	if err := http.ListenAndServe(":8081", r); err != nil {
+	if err := http.ListenAndServe(
+		":8081",
+		corsMiddleware(r),
+	); err != nil {
 		log.Fatalf("Failed to start server: %v", err)
 	}
 

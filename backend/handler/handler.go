@@ -157,3 +157,24 @@ func (handler *Handler) UpdateConfig(
 		log.Println("Failed to encode backend config:", err)
 	}
 }
+
+func (handler *Handler) GetConfig(
+	writer http.ResponseWriter,
+	req *http.Request,
+) {
+	handler.configMu.RLock()
+
+	config := BackendConfig{
+		SemaphoreSize:     cap(handler.Semaphore),
+		ConcurrentDelayMs: handler.ConcurrentDelayMs,
+		BaseLatencyMs:     handler.BaseLatencyMs,
+	}
+
+	handler.configMu.RUnlock()
+
+	writer.Header().Set("Content-Type", "application/json")
+
+	if err := json.NewEncoder(writer).Encode(config); err != nil {
+		log.Println("Failed to encode backend config:", err)
+	}
+}

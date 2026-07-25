@@ -13,11 +13,11 @@ type proxyErrorHolder struct {
 
 type proxyErrorContextKey struct{}
 
-func (h *Handler) fetchFromBackend(r *http.Request) ([]byte, int, error) {
+func (h *Handler) fetchFromBackend(r *http.Request, backendTimeoutMs int) ([]byte, int, error) {
 
 	backendStart := time.Now()
 
-	timeout := time.Duration(h.cacheConfig.BackendTimeoutMs) * time.Millisecond
+	timeout := time.Duration(backendTimeoutMs) * time.Millisecond
 	ctx, cancel := context.WithTimeout(r.Context(), timeout)
 	defer cancel()
 

@@ -2,8 +2,8 @@ import { Component, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 
 import { Api } from './services/api';
-import { CacheConfig } from './models/cache-config';
-
+import { CacheConfig, BackendConfig, GatewayConfig } from './models/cache-config';
+import { catchError, forkJoin, map, of } from 'rxjs';
 
 @Component({
   selector: 'app-root',
@@ -55,14 +55,24 @@ export class App implements OnInit {
     this.loading = true;
     this.errorMessage = '';
 
-    this.api.getCacheConfig().subscribe({
-      next: config => {
-        this.cacheConfig = config;
+    forkJoin({
+      gateway: this.api.getGatewayConfig(),
+      backend: this.api.getBackendConfig(),
+    }).subscribe({
+      next: ({ gateway, backend }) => {
+        this.cacheConfig = {
+          ...gateway,
+          ...backend,
+        };
+
         this.loading = false;
       },
       error: err => {
-        console.error('Cache config GET error:', err);
-        this.errorMessage = 'Unable to load cache configuration.';
+        console.error('Configuration GET error:', err);
+
+        this.errorMessage =
+          'Unable to load system configuration.';
+
         this.loading = false;
       }
     });
@@ -113,22 +123,122 @@ export class App implements OnInit {
 
     this.loading = true;
 
-    this.api.updateCacheConfig(this.cacheConfig).subscribe({
-      next: config => {
-        this.cacheConfig = config;
-        this.successMessage =
-          'Configuration successfully updated. Caches have been cleared.';
+    const gatewayConfig: GatewayConfig = {
+      l1MaxEntries: this.cacheConfig.l1MaxEntries,
+      l2MaxEntries: this.cacheConfig.l2MaxEntries,
+      l1TTLSeconds: this.cacheConfig.l1TTLSeconds,
+      l2TTLSeconds: this.cacheConfig.l2TTLSeconds,
+      singleFlightEnabled:
+        this.cacheConfig.singleFlightEnabled,
+      backendTimeoutMs:
+        this.cacheConfig.backendTimeoutMs,
+    };
+
+    const backendConfig: BackendConfig = {
+      semaphoreSize: this.cacheConfig.semaphoreSize,
+      concurrentDelayMs:
+        this.cacheConfig.concurrentDelayMs,
+      baseLatencyMs: this.cacheConfig.baseLatencyMs,
+    };
+
+    const gatewayRequest =
+      this.api.updateGatewayConfig(gatewayConfig).pipe(
+        map(config => ({
+          success: true as const,
+          config,
+        })),
+        catchError(error => of({
+          success: false as const,
+          error,
+        }))
+      );
+
+    const backendRequest =
+      this.api.updateBackendConfig(backendConfig).pipe(
+        map(config => ({
+          success: true as const,
+          config,
+        })),
+        catchError(error => of({
+          success: false as const,
+          error,
+        }))
+      );
+
+    forkJoin({
+      gateway: gatewayRequest,
+      backend: backendRequest,
+    }).subscribe({
+      next: result => {
         this.loading = false;
-      },
-      error: err => {
-        console.error('Cache config PUT error:', err);
+
+        if (result.gateway.success) {
+          this.cacheConfig = {
+            ...this.cacheConfig,
+            ...result.gateway.config,
+          };
+        }
+
+        if (result.backend.success) {
+          this.cacheConfig = {
+            ...this.cacheConfig,
+            ...result.backend.config,
+          };
+        }
+
+        if (
+          result.gateway.success &&
+          result.backend.success
+        ) {
+          this.successMessage =
+            'Configuration successfully updated. Caches have been cleared.';
+          return;
+        }
+
+        if (
+          result.gateway.success &&
+          !result.backend.success
+        ) {
+          console.error(
+            'Backend config PUT error:',
+            result.backend.error
+          );
+
+          this.errorMessage =
+            'Gateway configuration was updated, but backend configuration failed.';
+          return;
+        }
+
+        if (
+          !result.gateway.success &&
+          result.backend.success
+        ) {
+          console.error(
+            'Gateway config PUT error:',
+            result.gateway.error
+          );
+
+          this.errorMessage =
+            'Backend configuration was updated, but gateway configuration failed.';
+          return;
+        }
+
+        if ('error' in result.gateway) {
+          console.error(
+            'Gateway config PUT error:',
+            result.gateway.error
+          );
+        }
+
+        if ('error' in result.backend) {
+          console.error(
+            'Backend config PUT error:',
+            result.backend.error
+          );
+        }
 
         this.errorMessage =
-          typeof err.error === 'string'
-            ? err.error
-            : 'Unable to update cache configuration.';
-
-        this.loading = false;
+          'Unable to update gateway and backend configuration.';
       }
     });
   }

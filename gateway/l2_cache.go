@@ -34,8 +34,7 @@ func (h *Handler) getL2(ctx context.Context, key string) ([]byte, bool) {
 }
 
 func (h *Handler) setL2(ctx context.Context, key string,
-	value []byte, ttl time.Duration) {
-	maxEntries := h.cacheConfig.L2MaxEntries
+	value []byte, ttl time.Duration, maxEntries int) {
 
 	if maxEntries <= 0 {
 		return

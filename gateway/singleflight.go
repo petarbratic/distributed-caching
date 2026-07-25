@@ -18,6 +18,7 @@ func (h *Handler) handleBackendSingleFlight(
 	key string,
 	ttlL1 time.Duration,
 	ttlL2 time.Duration,
+	config GatewayConfig,
 ) {
 	call, isLeader := h.getOrCreateInFlight(key)
 
@@ -56,7 +57,7 @@ func (h *Handler) handleBackendSingleFlight(
 		)
 	}()
 
-	body, statusCode, err = h.fetchFromBackend(r)
+	body, statusCode, err = h.fetchFromBackend(r, config.BackendTimeoutMs)
 
 	if err != nil {
 		http.Error(w, "Backend request failed", http.StatusBadGateway)
@@ -70,12 +71,16 @@ func (h *Handler) handleBackendSingleFlight(
 		return
 	}
 
-	h.setL2(r.Context(), key, body, ttlL2)
+	h.setL2(r.Context(), key, body, ttlL2, config.L2MaxEntries)
 
-	h.setL1(key, KeyValue{
-		Value:      append([]byte(nil), body...),
-		Expiration: time.Now().Add(ttlL1),
-	})
+	h.setL1(
+		key,
+		KeyValue{
+			Value:      append([]byte(nil), body...),
+			Expiration: time.Now().Add(ttlL1),
+		},
+		config.L1MaxEntries,
+	)
 
 }
 

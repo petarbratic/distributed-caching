@@ -2,6 +2,7 @@ package main
 
 import (
 	"container/list"
+	"context"
 	"net/http"
 
 	"net/http/httputil"
@@ -24,10 +25,10 @@ type Handler struct {
 
 	redis *redis.Client
 
-	cacheConfig CacheConfig
-
-	backendURL string
-	httpClient *http.Client
+	configStore   *GatewayConfigStore
+	configMu      sync.RWMutex
+	gatewayConfig GatewayConfig
+	configVersion int64
 
 	inFlightMu sync.Mutex
 	inFlight   map[string]*inFlightCall
@@ -70,31 +71,53 @@ func NewHandler(target string) (*Handler, error) {
 		Addr: "redis:6379",
 	})
 
+	configStore := &GatewayConfigStore{
+		redis: rdb,
+	}
+
+	defaultConfig := GatewayConfig{
+		L1MaxEntries:        35,
+		L2MaxEntries:        70,
+		L1TTLSeconds:        15,
+		L2TTLSeconds:        30,
+		SingleFlightEnabled: false,
+		BackendTimeoutMs:    7000,
+	}
+
+	ctx := context.Background()
+
+	if err := configStore.Initialize(ctx, defaultConfig); err != nil {
+		return nil, err
+	}
+
+	gatewayConfig, configVersion, err := configStore.Get(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	return &Handler{
-		proxy:      proxy,
-		cache:      make(map[string]*list.Element),
-		cacheOrder: list.New(),
-		redis:      rdb,
-		cacheConfig: CacheConfig{
-			L1MaxEntries:        35,
-			L2MaxEntries:        70,
-			L1TTLSeconds:        15,
-			L2TTLSeconds:        30,
-			SemaphoreSize:       15,
-			ConcurrentDelayMs:   5,
-			BaseLatencyMs:       200,
-			SingleFlightEnabled: false,
-			BackendTimeoutMs:    7000,
-		},
-		backendURL: strings.TrimRight(target, "/"),
-		httpClient: &http.Client{
-			Timeout: 5 * time.Second,
-		},
-		inFlight: make(map[string]*inFlightCall),
+		proxy:         proxy,
+		cache:         make(map[string]*list.Element),
+		cacheOrder:    list.New(),
+		redis:         rdb,
+		configStore:   configStore,
+		gatewayConfig: gatewayConfig,
+		configVersion: configVersion,
+		inFlight:      make(map[string]*inFlightCall),
 	}, nil
 }
 
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+
+	config, err := h.currentGatewayConfig(r.Context())
+	if err != nil {
+		http.Error(
+			w,
+			"Gateway configuration unavailable",
+			http.StatusServiceUnavailable,
+		)
+		return
+	}
 
 	totalUserRequests.Inc()
 
@@ -103,8 +126,8 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	key := r.URL.RequestURI()
 
-	ttlL1 := time.Duration(h.cacheConfig.L1TTLSeconds) * time.Second
-	ttlL2 := time.Duration(h.cacheConfig.L2TTLSeconds) * time.Second
+	ttlL1 := time.Duration(config.L1TTLSeconds) * time.Second
+	ttlL2 := time.Duration(config.L2TTLSeconds) * time.Second
 
 	defer func() {
 		duration := time.Since(start)
@@ -128,10 +151,14 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	value, found := h.getL2(ctx, key)
 
 	if found {
-		h.setL1(key, KeyValue{
-			Value:      value,
-			Expiration: time.Now().Add(ttlL1),
-		})
+		h.setL1(
+			key,
+			KeyValue{
+				Value:      value,
+				Expiration: time.Now().Add(ttlL1),
+			},
+			config.L1MaxEntries,
+		)
 
 		_, _ = w.Write(value)
 
@@ -145,12 +172,12 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	totalCacheMisses.Inc()
 
 	// Backend
-	if h.cacheConfig.SingleFlightEnabled {
-		h.handleBackendSingleFlight(w, r, key, ttlL1, ttlL2)
+	if config.SingleFlightEnabled {
+		h.handleBackendSingleFlight(w, r, key, ttlL1, ttlL2, config)
 		return
 	}
 
-	h.handleBackendNormally(w, r, key, ttlL1, ttlL2)
+	h.handleBackendNormally(w, r, key, ttlL1, ttlL2, config)
 
 }
 
@@ -160,8 +187,9 @@ func (h *Handler) handleBackendNormally(
 	key string,
 	ttlL1 time.Duration,
 	ttlL2 time.Duration,
+	config GatewayConfig,
 ) {
-	body, statusCode, err := h.fetchFromBackend(r)
+	body, statusCode, err := h.fetchFromBackend(r, config.BackendTimeoutMs)
 
 	if err != nil {
 		http.Error(
@@ -181,10 +209,35 @@ func (h *Handler) handleBackendNormally(
 
 	ctx := r.Context()
 
-	h.setL2(ctx, key, body, ttlL2)
+	h.setL2(ctx, key, body, ttlL2, config.L2MaxEntries)
 
-	h.setL1(key, KeyValue{
-		Value:      append([]byte(nil), body...),
-		Expiration: time.Now().Add(ttlL1),
-	})
+	h.setL1(
+		key,
+		KeyValue{
+			Value:      append([]byte(nil), body...),
+			Expiration: time.Now().Add(ttlL1),
+		},
+		config.L1MaxEntries,
+	)
+}
+
+func (h *Handler) currentGatewayConfig(
+	ctx context.Context,
+) (GatewayConfig, error) {
+	config, version, err := h.configStore.Get(ctx)
+	if err != nil {
+		return GatewayConfig{}, err
+	}
+
+	h.configMu.Lock()
+	defer h.configMu.Unlock()
+
+	if version != h.configVersion {
+		h.clearL1()
+
+		h.gatewayConfig = config
+		h.configVersion = version
+	}
+
+	return h.gatewayConfig, nil
 }

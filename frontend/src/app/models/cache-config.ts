@@ -11,3 +11,18 @@ export interface CacheConfig {
   singleFlightEnabled: boolean;
   backendTimeoutMs: number;
 }
+
+export interface GatewayConfig {
+  l1MaxEntries: number;
+  l2MaxEntries: number;
+  l1TTLSeconds: number;
+  l2TTLSeconds: number;
+  singleFlightEnabled: boolean;
+  backendTimeoutMs: number;
+}
+
+export interface BackendConfig {
+  semaphoreSize: number;
+  concurrentDelayMs: number;
+  baseLatencyMs: number;
+}
