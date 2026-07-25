@@ -1,16 +1,49 @@
 services:
-  gateway:
+  gateway-1:
     build:
       context: .
       dockerfile: gateway/Dockerfile
-    ports:
-      - "8080:8080"
     environment:
       BACKEND_URL: http://backend:8081
+      INSTANCE_NAME: gateway-1
     depends_on:
-      - backend
+      backend:
+        condition: service_started
+      redis:
+        condition: service_healthy
     networks:
       - cache-net
+
+  gateway-2:
+    build:
+      context: .
+      dockerfile: gateway/Dockerfile
+    environment:
+      BACKEND_URL: http://backend:8081
+      INSTANCE_NAME: gateway-2
+    depends_on:
+      backend:
+        condition: service_started
+      redis:
+        condition: service_healthy
+    networks:
+      - cache-net
+
+  load-balancer:
+    image: nginx:alpine
+    restart: on-failure
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      gateway-1:
+        condition: service_started
+      gateway-2:
+        condition: service_started
+    networks:
+      - cache-net
+    
 
   backend:
     build:
@@ -28,7 +61,7 @@ services:
     ports:
       - "4200:4200"
     depends_on:
-      - gateway
+      - load-balancer
     networks:
       - cache-net
 
@@ -36,6 +69,11 @@ services:
     image: redis:7-alpine
     ports:
       - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 2s
+      timeout: 2s
+      retries: 10
     networks:
       - cache-net
   
@@ -47,7 +85,8 @@ services:
     volumes:
       - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
     depends_on:
-      - gateway
+      - gateway-1
+      - gateway-2
       - backend
     networks:
       - cache-net
