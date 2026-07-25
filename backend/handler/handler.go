@@ -33,10 +33,14 @@ func (handler *Handler) Get(writer http.ResponseWriter, req *http.Request) {
 	concurrentDelayMs := handler.ConcurrentDelayMs
 	baseLatencyMs := handler.BaseLatencyMs
 
-	semaphore <- struct{}{}
-	defer func() {
-		<-semaphore
-	}()
+	select {
+	case semaphore <- struct{}{}:
+		defer func() {
+			<-semaphore
+		}()
+	case <-req.Context().Done():
+		return
+	}
 
 	active := atomic.AddInt64(&handler.Active, 1)
 	backendActiveRequests.Inc()
@@ -52,23 +56,33 @@ func (handler *Handler) Get(writer http.ResponseWriter, req *http.Request) {
 			time.Duration(concurrentDelayMs) *
 			time.Millisecond
 
-	time.Sleep(concurrentDelay)
+	select {
+	case <-time.After(concurrentDelay):
+	case <-req.Context().Done():
+		log.Printf("Request canceled during concurrent delay")
+		return
+	}
 
 	id := mux.Vars(req)["id"]
-	log.Printf("Entity with id %s", id)
+	//log.Printf("Entity with id %s", id)
 
 	entity, err := handler.Service.FindEntity(
+		req.Context(),
 		id,
 		time.Duration(baseLatencyMs)*time.Millisecond,
 	)
 
-	writer.Header().Set("Content-Type", "application/json")
-
 	if err != nil {
+		if req.Context().Err() != nil {
+			log.Printf("Request canceled while fetching entity: %v", req.Context().Err())
+			return
+		}
+
 		writer.WriteHeader(http.StatusNotFound)
 		return
 	}
 
+	writer.Header().Set("Content-Type", "application/json")
 	writer.WriteHeader(http.StatusOK)
 
 	if err := json.NewEncoder(writer).Encode(entity); err != nil {

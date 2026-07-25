@@ -2,7 +2,6 @@ package main
 
 import (
 	"container/list"
-	"log"
 	"net/http"
 
 	"net/http/httputil"
@@ -112,18 +111,14 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 		requestDuration.Observe(duration.Seconds())
 
-		log.Printf(
-			"Request total time: %v, key: %s",
-			duration,
-			key,
-		)
+		//log.Printf("Request total time: %v, key: %s", duration,	key)
 	}()
 
 	// L1 cache
 	if cached, found := h.getL1(key); found {
 		_, _ = w.Write(cached.Value)
 
-		log.Println("L1 HIT: ", key)
+		//log.Println("L1 HIT: ", key)
 		totalL1Hits.Inc()
 
 		return
@@ -140,13 +135,13 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 		_, _ = w.Write(value)
 
-		log.Println("L2 HIT: ", key)
+		//log.Println("L2 HIT: ", key)
 		totalL2Hits.Inc()
 
 		return
 	}
 
-	log.Println("CACHE MISS:", key)
+	//log.Println("CACHE MISS:", key)
 	totalCacheMisses.Inc()
 
 	// Backend
@@ -169,7 +164,11 @@ func (h *Handler) handleBackendNormally(
 	body, statusCode, err := h.fetchFromBackend(r)
 
 	if err != nil {
-		http.Error(w, "Backend request failed", http.StatusBadGateway)
+		http.Error(
+			w,
+			"Backend request failed",
+			statusCode,
+		)
 		return
 	}
 

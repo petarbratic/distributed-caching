@@ -23,6 +23,8 @@ func main() {
 
 	r := mux.NewRouter()
 
+	r.Use(metricsMiddleware)
+
 	r.Handle("/metrics", promhttp.Handler())
 
 	api := r.PathPrefix("/api").Subrouter()

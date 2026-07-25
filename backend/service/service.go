@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"fmt"
 	"time"
 )
@@ -14,6 +15,7 @@ type Entity struct {
 }
 
 func (service *Service) FindEntity(
+	ctx context.Context,
 	id string,
 	baseLatency time.Duration,
 ) (*Entity, error) {
@@ -23,7 +25,11 @@ func (service *Service) FindEntity(
 		return nil, fmt.Errorf("Invalid id")
 	}
 
-	time.Sleep(baseLatency)
+	select {
+	case <-time.After(baseLatency):
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	}
 
 	entity := &Entity{
 		ID:   id,

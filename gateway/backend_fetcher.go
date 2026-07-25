@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"log"
 	"net/http"
 	"net/http/httptest"
 	"time"
@@ -38,11 +37,7 @@ func (h *Handler) fetchFromBackend(r *http.Request) ([]byte, int, error) {
 	duration := time.Since(backendStart)
 	backendDuration.Observe(duration.Seconds())
 
-	log.Printf(
-		"Backend call duration: %v, for key: %s",
-		duration,
-		r.URL.RequestURI(),
-	)
+	//log.Printf("Backend call duration: %v, for key: %s", duration, r.URL.RequestURI())
 
 	body := append([]byte(nil), recorder.Body.Bytes()...)
 	statusCode := recorder.Code

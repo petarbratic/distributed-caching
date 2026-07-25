@@ -4,6 +4,7 @@ import "github.com/prometheus/client_golang/prometheus"
 
 func registerMetrics() {
 	prometheus.MustRegister(totalUserRequests)
+	prometheus.MustRegister(totalFailedRequests)
 	prometheus.MustRegister(totalL1Hits)
 	prometheus.MustRegister(totalL2Hits)
 	prometheus.MustRegister(totalCacheMisses)
@@ -15,6 +16,13 @@ var totalUserRequests = prometheus.NewCounter(
 	prometheus.CounterOpts{
 		Name: "gateway_http_requests_total",
 		Help: "Total number of HTTP requests gateway received.",
+	},
+)
+
+var totalFailedRequests = prometheus.NewCounter(
+	prometheus.CounterOpts{
+		Name: "gateway_failed_requests_total",
+		Help: "Total number of failed gateway requests",
 	},
 )
 
