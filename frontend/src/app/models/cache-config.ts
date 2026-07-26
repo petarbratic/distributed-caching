@@ -9,6 +9,7 @@ export interface CacheConfig {
   baseLatencyMs: number;
 
   singleFlightEnabled: boolean;
+  distributedLockEnabled: boolean;
   backendTimeoutMs: number;
 }
 
@@ -18,6 +19,7 @@ export interface GatewayConfig {
   l1TTLSeconds: number;
   l2TTLSeconds: number;
   singleFlightEnabled: boolean;
+  distributedLockEnabled: boolean;
   backendTimeoutMs: number;
 }
 

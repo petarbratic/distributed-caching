@@ -82,6 +82,16 @@
             <input id="singleFlightEnabled" name="singleFlightEnabled" type="checkbox"
                 [(ngModel)]="cacheConfig.singleFlightEnabled" />
         </div>
+        
+        <!-- Distributed Lock Enabled -->
+        <div class="form-group checkbox-group">
+            <label for="distributedLockEnabled">
+                Enable distributed lock
+            </label>
+
+            <input id="distributedLockEnabled" name="distributedLockEnabled" type="checkbox"
+                [(ngModel)]="cacheConfig.distributedLockEnabled" />
+        </div>
 
         <!-- Backend Timeout (ms) -->
         <div class="form-group">

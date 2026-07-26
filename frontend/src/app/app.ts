@@ -27,6 +27,7 @@ export class App implements OnInit {
     baseLatencyMs: 2000,
 
     singleFlightEnabled: false,
+    distributedLockEnabled: false,
     backendTimeoutMs: 5000,
   };
 
@@ -130,6 +131,8 @@ export class App implements OnInit {
       l2TTLSeconds: this.cacheConfig.l2TTLSeconds,
       singleFlightEnabled:
         this.cacheConfig.singleFlightEnabled,
+      distributedLockEnabled:
+        this.cacheConfig.distributedLockEnabled,
       backendTimeoutMs:
         this.cacheConfig.backendTimeoutMs,
     };

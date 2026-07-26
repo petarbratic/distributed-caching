@@ -140,12 +140,13 @@ func (h *Handler) updateCacheConfig(
 	}
 
 	log.Printf(
-		"Gateway configuration changed: L1=%d, L2=%d, TTL L1=%d, TTL L2=%d, SingleFlightEnabled=%t, BackendTimeout=%d",
+		"Gateway configuration changed: L1=%d, L2=%d, TTL L1=%d, TTL L2=%d, SingleFlightEnabled=%t, DistributedLockEnabled=%t, BackendTimeout=%d",
 		newConfig.L1MaxEntries,
 		newConfig.L2MaxEntries,
 		newConfig.L1TTLSeconds,
 		newConfig.L2TTLSeconds,
 		newConfig.SingleFlightEnabled,
+		newConfig.DistributedLockEnabled,
 		newConfig.BackendTimeoutMs,
 	)
 

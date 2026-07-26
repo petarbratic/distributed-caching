@@ -48,16 +48,14 @@ func (h *Handler) handleBackendSingleFlight(
 	)
 
 	defer func() {
-		h.finishInFlight(
-			key,
-			call,
-			body,
-			statusCode,
-			err,
-		)
+		h.finishInFlight(key, call, body, statusCode, err)
 	}()
 
-	body, statusCode, err = h.fetchFromBackend(r, config.BackendTimeoutMs)
+	if config.DistributedLockEnabled {
+		body, statusCode, err = h.fetchWithDistributedLock(r, key, ttlL2, config)
+	} else {
+		body, statusCode, err = h.fetchFromBackend(r, config.BackendTimeoutMs)
+	}
 
 	if err != nil {
 		http.Error(w, "Backend request failed", http.StatusBadGateway)
@@ -70,8 +68,9 @@ func (h *Handler) handleBackendSingleFlight(
 	if statusCode < 200 || statusCode >= 300 {
 		return
 	}
-
-	h.setL2(r.Context(), key, body, ttlL2, config.L2MaxEntries)
+	if !config.DistributedLockEnabled {
+		h.setL2(r.Context(), key, body, ttlL2, config.L2MaxEntries)
+	}
 
 	h.setL1(
 		key,

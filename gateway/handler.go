@@ -76,12 +76,13 @@ func NewHandler(target string) (*Handler, error) {
 	}
 
 	defaultConfig := GatewayConfig{
-		L1MaxEntries:        35,
-		L2MaxEntries:        70,
-		L1TTLSeconds:        15,
-		L2TTLSeconds:        30,
-		SingleFlightEnabled: false,
-		BackendTimeoutMs:    7000,
+		L1MaxEntries:           35,
+		L2MaxEntries:           70,
+		L1TTLSeconds:           15,
+		L2TTLSeconds:           30,
+		SingleFlightEnabled:    false,
+		DistributedLockEnabled: false,
+		BackendTimeoutMs:       7000,
 	}
 
 	ctx := context.Background()
@@ -189,7 +190,16 @@ func (h *Handler) handleBackendNormally(
 	ttlL2 time.Duration,
 	config GatewayConfig,
 ) {
-	body, statusCode, err := h.fetchFromBackend(r, config.BackendTimeoutMs)
+	var (
+		body       []byte
+		statusCode int
+		err        error
+	)
+	if config.DistributedLockEnabled {
+		body, statusCode, err = h.fetchWithDistributedLock(r, key, ttlL2, config)
+	} else {
+		body, statusCode, err = h.fetchFromBackend(r, config.BackendTimeoutMs)
+	}
 
 	if err != nil {
 		http.Error(
@@ -207,9 +217,9 @@ func (h *Handler) handleBackendNormally(
 		return
 	}
 
-	ctx := r.Context()
-
-	h.setL2(ctx, key, body, ttlL2, config.L2MaxEntries)
+	if !config.DistributedLockEnabled {
+		h.setL2(r.Context(), key, body, ttlL2, config.L2MaxEntries)
+	}
 
 	h.setL1(
 		key,
