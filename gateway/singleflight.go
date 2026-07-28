@@ -42,6 +42,7 @@ func (h *Handler) handleBackendSingleFlight(
 
 	// This request is the first and calls backend
 	var (
+		value      KeyValue
 		body       []byte
 		statusCode int
 		err        error
@@ -52,10 +53,15 @@ func (h *Handler) handleBackendSingleFlight(
 	}()
 
 	if config.DistributedLockEnabled {
-		body, statusCode, err = h.fetchWithDistributedLock(r, key, ttlL2, config)
+		value, statusCode, err = h.fetchWithDistributedLock(r, key, ttlL2, config)
 	} else {
-		body, statusCode, err = h.fetchFromBackend(r, config.BackendTimeoutMs)
+		value, statusCode, err = h.fetchFromBackend(r, config.BackendTimeoutMs)
 	}
+
+	body = append(
+		[]byte(nil),
+		value.Value...,
+	)
 
 	if err != nil {
 		http.Error(w, "Backend request failed", http.StatusBadGateway)
@@ -69,15 +75,16 @@ func (h *Handler) handleBackendSingleFlight(
 		return
 	}
 	if !config.DistributedLockEnabled {
-		h.setL2(r.Context(), key, body, ttlL2, config.L2MaxEntries)
+		value.L2Expiration = time.Now().Add(ttlL2)
+
+		h.setL2(r.Context(), key, value, ttlL2, config.L2MaxEntries)
 	}
+
+	value.L1Expiration = time.Now().Add(ttlL1)
 
 	h.setL1(
 		key,
-		KeyValue{
-			Value:      append([]byte(nil), body...),
-			Expiration: time.Now().Add(ttlL1),
-		},
+		value,
 		config.L1MaxEntries,
 	)
 

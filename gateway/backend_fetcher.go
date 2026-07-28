@@ -13,7 +13,7 @@ type proxyErrorHolder struct {
 
 type proxyErrorContextKey struct{}
 
-func (h *Handler) fetchFromBackend(r *http.Request, backendTimeoutMs int) ([]byte, int, error) {
+func (h *Handler) fetchFromBackend(r *http.Request, backendTimeoutMs int) (KeyValue, int, error) {
 
 	backendStart := time.Now()
 
@@ -39,16 +39,23 @@ func (h *Handler) fetchFromBackend(r *http.Request, backendTimeoutMs int) ([]byt
 
 	//log.Printf("Backend call duration: %v, for key: %s", duration, r.URL.RequestURI())
 
-	body := append([]byte(nil), recorder.Body.Bytes()...)
+	result := KeyValue{
+		Value: append(
+			[]byte(nil),
+			recorder.Body.Bytes()...,
+		),
+		RecomputeDuration: duration,
+	}
+
 	statusCode := recorder.Code
 
 	if errorHolder.err != nil {
-		return body, statusCode, errorHolder.err
+		return result, statusCode, errorHolder.err
 	}
 
 	if ctx.Err() != nil {
-		return body, http.StatusGatewayTimeout, ctx.Err()
+		return result, http.StatusGatewayTimeout, ctx.Err()
 	}
 
-	return body, statusCode, nil
+	return result, statusCode, nil
 }

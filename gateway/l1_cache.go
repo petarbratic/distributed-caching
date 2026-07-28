@@ -16,7 +16,7 @@ func (h *Handler) getL1(key string) (KeyValue, bool) {
 
 	entry := element.Value.(*CacheEntry)
 
-	if time.Now().After(entry.Value.Expiration) {
+	if time.Now().After(entry.Value.L1Expiration) {
 		delete(h.cache, key)
 		h.cacheOrder.Remove(element)
 

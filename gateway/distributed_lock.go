@@ -114,7 +114,7 @@ func (h *Handler) fetchWithDistributedLock(
 	cacheKey string,
 	ttlL2 time.Duration,
 	config GatewayConfig,
-) ([]byte, int, error) {
+) (KeyValue, int, error) {
 	lockKey := distributedLockKey(cacheKey)
 
 	lockTTL := time.Duration(config.BackendTimeoutMs)*time.Millisecond + lockSafetyMargin
@@ -130,7 +130,7 @@ func (h *Handler) fetchWithDistributedLock(
 		token, acquired, err := h.tryAcquireDistributedLock(waitContext, lockKey, lockTTL)
 		if err != nil {
 			log.Printf("Distributed lock attempt failed for key %s: %v", cacheKey, err)
-			return nil, http.StatusServiceUnavailable, err
+			return KeyValue{}, http.StatusServiceUnavailable, err
 		}
 
 		if acquired {
@@ -151,7 +151,7 @@ func (h *Handler) fetchWithDistributedLock(
 
 		lockExists, err := h.redis.Exists(waitContext, lockKey).Result()
 		if err != nil {
-			return nil, http.StatusServiceUnavailable, fmt.Errorf(
+			return KeyValue{}, http.StatusServiceUnavailable, fmt.Errorf(
 				"check distributed lock: %w", err,
 			)
 		}
@@ -165,7 +165,7 @@ func (h *Handler) fetchWithDistributedLock(
 		case <-time.After(lockPollInterval):
 		case <-waitContext.Done():
 			log.Printf("Timed out while waiting for distributed lock for key %s", cacheKey)
-			return nil, http.StatusGatewayTimeout, waitContext.Err()
+			return KeyValue{}, http.StatusGatewayTimeout, waitContext.Err()
 		}
 	}
 }
@@ -177,7 +177,7 @@ func (h *Handler) fetchAsDistributedLockOwner(
 	token string,
 	ttlL2 time.Duration,
 	config GatewayConfig,
-) ([]byte, int, error) {
+) (KeyValue, int, error) {
 	defer h.releaseDistributedLock(lockKey, token, cacheKey)
 
 	value, found := h.getL2(r.Context(), cacheKey)
@@ -188,18 +188,20 @@ func (h *Handler) fetchAsDistributedLockOwner(
 
 	log.Printf("Distributed lock owner is calling backend for key %s", cacheKey)
 
-	body, statusCode, err := h.fetchFromBackend(r, config.BackendTimeoutMs)
+	value, statusCode, err := h.fetchFromBackend(r, config.BackendTimeoutMs)
 
 	if err != nil {
 		log.Printf("Backend call failed while holding distributed lock for key %s: %v", cacheKey, err)
-		return body, statusCode, err
+		return value, statusCode, err
 	}
 
 	if statusCode >= 200 && statusCode < 300 {
-		h.setL2(r.Context(), cacheKey, body, ttlL2, config.L2MaxEntries)
+		value.L2Expiration = time.Now().Add(ttlL2)
+
+		h.setL2(r.Context(), cacheKey, value, ttlL2, config.L2MaxEntries)
 		log.Printf("Distributed lock owner stored backend response in L2 for key %s", cacheKey)
 	}
 
-	return body, statusCode, nil
+	return value, statusCode, nil
 
 }

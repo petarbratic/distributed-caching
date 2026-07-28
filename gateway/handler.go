@@ -154,16 +154,15 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	value, found := h.getL2(ctx, key)
 
 	if found {
+		value.L1Expiration = time.Now().Add(ttlL1)
+
 		h.setL1(
 			key,
-			KeyValue{
-				Value:      value,
-				Expiration: time.Now().Add(ttlL1),
-			},
+			value,
 			config.L1MaxEntries,
 		)
 
-		_, _ = w.Write(value)
+		_, _ = w.Write(value.Value)
 
 		//log.Println("L2 HIT: ", key)
 		totalL2Hits.Inc()
@@ -193,14 +192,14 @@ func (h *Handler) handleBackendNormally(
 	config GatewayConfig,
 ) {
 	var (
-		body       []byte
+		value      KeyValue
 		statusCode int
 		err        error
 	)
 	if config.DistributedLockEnabled {
-		body, statusCode, err = h.fetchWithDistributedLock(r, key, ttlL2, config)
+		value, statusCode, err = h.fetchWithDistributedLock(r, key, ttlL2, config)
 	} else {
-		body, statusCode, err = h.fetchFromBackend(r, config.BackendTimeoutMs)
+		value, statusCode, err = h.fetchFromBackend(r, config.BackendTimeoutMs)
 	}
 
 	if err != nil {
@@ -213,22 +212,23 @@ func (h *Handler) handleBackendNormally(
 	}
 
 	w.WriteHeader(statusCode)
-	_, _ = w.Write(body)
+	_, _ = w.Write(value.Value)
 
 	if statusCode < 200 || statusCode >= 300 {
 		return
 	}
 
 	if !config.DistributedLockEnabled {
-		h.setL2(r.Context(), key, body, ttlL2, config.L2MaxEntries)
+		value.L2Expiration = time.Now().Add(ttlL2)
+
+		h.setL2(r.Context(), key, value, ttlL2, config.L2MaxEntries)
 	}
+
+	value.L1Expiration = time.Now().Add(ttlL1)
 
 	h.setL1(
 		key,
-		KeyValue{
-			Value:      append([]byte(nil), body...),
-			Expiration: time.Now().Add(ttlL1),
-		},
+		value,
 		config.L1MaxEntries,
 	)
 }
