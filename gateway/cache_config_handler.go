@@ -107,6 +107,16 @@ func (h *Handler) updateCacheConfig(
 		return
 	}
 
+	if newConfig.EarlyRefreshBeta < 0.1 ||
+		newConfig.EarlyRefreshBeta > 10 {
+		http.Error(
+			w,
+			"EarlyRefreshBeta must be between 0.1 and 10",
+			http.StatusBadRequest,
+		)
+		return
+	}
+
 	version, err := h.configStore.Update(
 		r.Context(),
 		newConfig,
@@ -140,13 +150,15 @@ func (h *Handler) updateCacheConfig(
 	}
 
 	log.Printf(
-		"Gateway configuration changed: L1=%d, L2=%d, TTL L1=%d, TTL L2=%d, SingleFlightEnabled=%t, DistributedLockEnabled=%t, BackendTimeout=%d",
+		"Gateway configuration changed: L1=%d, L2=%d, TTL L1=%d, TTL L2=%d, SingleFlightEnabled=%t, DistributedLockEnabled=%t, ProbabilisticEarlyRefreshEnabled=%t, EarlyRefreshBeta=%.2f, BackendTimeout=%d",
 		newConfig.L1MaxEntries,
 		newConfig.L2MaxEntries,
 		newConfig.L1TTLSeconds,
 		newConfig.L2TTLSeconds,
 		newConfig.SingleFlightEnabled,
 		newConfig.DistributedLockEnabled,
+		newConfig.ProbabilisticEarlyRefreshEnabled,
+		newConfig.EarlyRefreshBeta,
 		newConfig.BackendTimeoutMs,
 	)
 

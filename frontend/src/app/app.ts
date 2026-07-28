@@ -28,6 +28,8 @@ export class App implements OnInit {
 
     singleFlightEnabled: false,
     distributedLockEnabled: false,
+    probabilisticEarlyRefreshEnabled: false,
+    earlyRefreshBeta: 1,
     backendTimeoutMs: 5000,
   };
 
@@ -122,6 +124,15 @@ export class App implements OnInit {
       return;
     }
 
+    if (
+      this.cacheConfig.earlyRefreshBeta < 0.1 ||
+      this.cacheConfig.earlyRefreshBeta > 10
+    ) {
+      this.errorMessage =
+        'Early refresh beta must be between 0.1 and 10.';
+      return;
+    }
+
     this.loading = true;
 
     const gatewayConfig: GatewayConfig = {
@@ -133,6 +144,10 @@ export class App implements OnInit {
         this.cacheConfig.singleFlightEnabled,
       distributedLockEnabled:
         this.cacheConfig.distributedLockEnabled,
+      probabilisticEarlyRefreshEnabled:
+        this.cacheConfig.probabilisticEarlyRefreshEnabled,
+      earlyRefreshBeta:
+        this.cacheConfig.earlyRefreshBeta,
       backendTimeoutMs:
         this.cacheConfig.backendTimeoutMs,
     };

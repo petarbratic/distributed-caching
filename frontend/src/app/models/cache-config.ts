@@ -10,6 +10,8 @@ export interface CacheConfig {
 
   singleFlightEnabled: boolean;
   distributedLockEnabled: boolean;
+  probabilisticEarlyRefreshEnabled: boolean;
+  earlyRefreshBeta: number;
   backendTimeoutMs: number;
 }
 
@@ -20,6 +22,8 @@ export interface GatewayConfig {
   l2TTLSeconds: number;
   singleFlightEnabled: boolean;
   distributedLockEnabled: boolean;
+  probabilisticEarlyRefreshEnabled: boolean;
+  earlyRefreshBeta: number;
   backendTimeoutMs: number;
 }
 

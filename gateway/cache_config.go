@@ -7,7 +7,9 @@ type GatewayConfig struct {
 	L1TTLSeconds int `json:"l1TTLSeconds"`
 	L2TTLSeconds int `json:"l2TTLSeconds"`
 
-	SingleFlightEnabled    bool `json:"singleFlightEnabled"`
-	DistributedLockEnabled bool `json:"distributedLockEnabled"`
-	BackendTimeoutMs       int  `json:"backendTimeoutMs"`
+	SingleFlightEnabled              bool    `json:"singleFlightEnabled"`
+	DistributedLockEnabled           bool    `json:"distributedLockEnabled"`
+	ProbabilisticEarlyRefreshEnabled bool    `json:"probabilisticEarlyRefreshEnabled"`
+	EarlyRefreshBeta                 float64 `json:"earlyRefreshBeta"`
+	BackendTimeoutMs                 int     `json:"backendTimeoutMs"`
 }

@@ -76,13 +76,15 @@ func NewHandler(target string) (*Handler, error) {
 	}
 
 	defaultConfig := GatewayConfig{
-		L1MaxEntries:           35,
-		L2MaxEntries:           70,
-		L1TTLSeconds:           15,
-		L2TTLSeconds:           30,
-		SingleFlightEnabled:    false,
-		DistributedLockEnabled: false,
-		BackendTimeoutMs:       7000,
+		L1MaxEntries:                     35,
+		L2MaxEntries:                     70,
+		L1TTLSeconds:                     15,
+		L2TTLSeconds:                     30,
+		SingleFlightEnabled:              false,
+		DistributedLockEnabled:           false,
+		ProbabilisticEarlyRefreshEnabled: false,
+		EarlyRefreshBeta:                 1.0,
+		BackendTimeoutMs:                 7000,
 	}
 
 	ctx := context.Background()
