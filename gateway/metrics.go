@@ -10,6 +10,7 @@ func registerMetrics() {
 	prometheus.MustRegister(totalCacheMisses)
 	prometheus.MustRegister(requestDuration)
 	prometheus.MustRegister(backendDuration)
+	prometheus.MustRegister(singleFlightWaitingRequests)
 }
 
 var totalUserRequests = prometheus.NewCounter(
@@ -51,6 +52,13 @@ var totalCacheMisses = prometheus.NewCounter(
 	prometheus.CounterOpts{
 		Name: "gateway_cache_miss_total",
 		Help: "Total number of cache misses.",
+	},
+)
+
+var singleFlightWaitingRequests = prometheus.NewGauge(
+	prometheus.GaugeOpts{
+		Name: "gateway_singleflight_waiting_requests",
+		Help: "Current number of requests waiting for a SingleFlight result.",
 	},
 )
 

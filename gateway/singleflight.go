@@ -23,6 +23,8 @@ func (h *Handler) handleBackendSingleFlight(
 	call, isLeader := h.getOrCreateInFlight(key)
 
 	if !isLeader {
+		singleFlightWaitingRequests.Inc()
+		defer singleFlightWaitingRequests.Dec()
 		select {
 		case <-call.done:
 			if call.err != nil {
