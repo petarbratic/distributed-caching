@@ -154,6 +154,15 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	value, found := h.getL2(ctx, key)
 
 	if found {
+
+		if config.ProbabilisticEarlyRefreshEnabled {
+			refreshedValue, refreshed :=
+				h.tryProbabilisticEarlyRefresh(r, key, value, ttlL2, config)
+			if refreshed {
+				value = refreshedValue
+			}
+		}
+
 		value.L1Expiration = time.Now().Add(ttlL1)
 
 		h.setL1(

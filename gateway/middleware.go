@@ -43,12 +43,12 @@ func gatewayInstanceMiddleware(
 			)
 
 			if req.URL.Path != "/metrics" {
-				log.Printf(
-					"Gateway instance %s received %s %s",
-					instanceName,
-					req.Method,
-					req.URL.RequestURI(),
-				)
+				// log.Printf(
+				// 	"Gateway instance %s received %s %s",
+				// 	instanceName,
+				// 	req.Method,
+				// 	req.URL.RequestURI(),
+				// )
 			}
 
 			next.ServeHTTP(writer, req)

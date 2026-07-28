@@ -16,11 +16,18 @@ func (h *Handler) getL1(key string) (KeyValue, bool) {
 
 	entry := element.Value.(*CacheEntry)
 
-	if time.Now().After(entry.Value.L1Expiration) {
+	now := time.Now()
+
+	l1Expired := now.After(entry.Value.L1Expiration)
+
+	l2Expired := !entry.Value.L2Expiration.IsZero() &&
+		now.After(entry.Value.L2Expiration)
+
+	if l1Expired || l2Expired {
 		delete(h.cache, key)
 		h.cacheOrder.Remove(element)
 
-		log.Println("L1 Expired: ", key)
+		//log.Println("L1 Expired: ", key)
 
 		return KeyValue{}, false
 	}
@@ -70,7 +77,7 @@ func (h *Handler) removeL1LRU() {
 	delete(h.cache, entry.Key)
 	h.cacheOrder.Remove(element)
 
-	log.Println("L1 EVICTED: ", entry.Key)
+	//log.Println("L1 EVICTED: ", entry.Key)
 }
 
 func (h *Handler) clearL1() {

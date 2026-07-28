@@ -132,7 +132,7 @@ func (h *Handler) removeL2LRU(ctx context.Context, count int64) {
 			continue
 		}
 
-		log.Println("L2 EVICTED: ", key)
+		//log.Println("L2 EVICTED: ", key)
 	}
 }
 
