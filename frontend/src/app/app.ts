@@ -4,10 +4,11 @@ import { FormsModule } from '@angular/forms';
 import { Api } from './services/api';
 import { CacheConfig, BackendConfig, GatewayConfig } from './models/cache-config';
 import { catchError, forkJoin, map, of } from 'rxjs';
+import { NgIf } from '@angular/common';
 
 @Component({
   selector: 'app-root',
-  imports: [FormsModule],
+  imports: [FormsModule, NgIf],
   templateUrl: './app.html',
   styleUrl: './app.css'
 })
