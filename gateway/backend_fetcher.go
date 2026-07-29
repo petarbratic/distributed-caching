@@ -18,6 +18,7 @@ func (h *Handler) fetchFromBackend(r *http.Request, backendTimeoutMs int) (KeyVa
 	backendStart := time.Now()
 
 	timeout := time.Duration(backendTimeoutMs) * time.Millisecond
+	h.recordBackendCallForFAF(r.Context(), r.URL.RequestURI(), timeout)
 	ctx, cancel := context.WithTimeout(r.Context(), timeout)
 	defer cancel()
 

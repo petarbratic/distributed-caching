@@ -12,6 +12,8 @@ func registerMetrics() {
 	prometheus.MustRegister(backendDuration)
 	prometheus.MustRegister(singleFlightWaitingRequests)
 	prometheus.MustRegister(distributedLockAttempts)
+	prometheus.MustRegister(backendCallsByKey)
+	prometheus.MustRegister(logicalRefreshesByKey)
 }
 
 var totalUserRequests = prometheus.NewCounter(
@@ -69,6 +71,22 @@ var distributedLockAttempts = prometheus.NewCounterVec(
 		Help: "Total number of distributed lock attempts by result.",
 	},
 	[]string{"result"},
+)
+
+var backendCallsByKey = prometheus.NewCounterVec(
+	prometheus.CounterOpts{
+		Name: "gateway_backend_calls_total",
+		Help: "Total number of backend calls by cache key.",
+	},
+	[]string{"key"},
+)
+
+var logicalRefreshesByKey = prometheus.NewCounterVec(
+	prometheus.CounterOpts{
+		Name: "gateway_logical_refreshes_total",
+		Help: "Total number of logical cache refreshes by cache key.",
+	},
+	[]string{"key"},
 )
 
 var requestDuration = prometheus.NewHistogram(

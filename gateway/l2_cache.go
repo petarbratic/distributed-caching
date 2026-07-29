@@ -92,6 +92,14 @@ func (h *Handler) setL2(ctx context.Context, key string,
 		return
 	}
 
+	markerKey := fafRefreshMarkerKey(key)
+
+	if err := h.redis.Del(ctx, markerKey).Err(); err != nil {
+		log.Printf("Failed to remove completed FAF refresh marker for key %s: %v", key, err)
+	} else {
+		//log.Printf("Completed FAF logical refresh for key %s", key)
+	}
+
 	err = h.redis.ZAdd(ctx, l2LRUKey, redis.Z{
 		Score:  float64(time.Now().UnixNano()),
 		Member: key,
