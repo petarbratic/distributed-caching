@@ -60,10 +60,17 @@ func (h *Handler) tryAcquireDistributedLock(
 		ttl,
 	).Result()
 	if err != nil {
+		distributedLockAttempts.WithLabelValues("failure").Inc()
 		return "", false, fmt.Errorf(
 			"acquire distributed lock: %w",
 			err,
 		)
+	}
+
+	if acquired {
+		distributedLockAttempts.WithLabelValues("success").Inc()
+	} else {
+		distributedLockAttempts.WithLabelValues("failure").Inc()
 	}
 
 	return token, acquired, nil

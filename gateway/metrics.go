@@ -11,6 +11,7 @@ func registerMetrics() {
 	prometheus.MustRegister(requestDuration)
 	prometheus.MustRegister(backendDuration)
 	prometheus.MustRegister(singleFlightWaitingRequests)
+	prometheus.MustRegister(distributedLockAttempts)
 }
 
 var totalUserRequests = prometheus.NewCounter(
@@ -60,6 +61,14 @@ var singleFlightWaitingRequests = prometheus.NewGauge(
 		Name: "gateway_singleflight_waiting_requests",
 		Help: "Current number of requests waiting for a SingleFlight result.",
 	},
+)
+
+var distributedLockAttempts = prometheus.NewCounterVec(
+	prometheus.CounterOpts{
+		Name: "gateway_distributed_lock_attempts_total",
+		Help: "Total number of distributed lock attempts by result.",
+	},
+	[]string{"result"},
 )
 
 var requestDuration = prometheus.NewHistogram(
