@@ -30,6 +30,8 @@ type Handler struct {
 	gatewayConfig GatewayConfig
 	configVersion int64
 
+	adaptiveTTLController *AdaptiveTTLController
+
 	inFlightMu sync.Mutex
 	inFlight   map[string]*inFlightCall
 }
@@ -71,6 +73,11 @@ func NewHandler(target string) (*Handler, error) {
 		Addr: "redis:6379",
 	})
 
+	adaptiveTTLController, err := NewAdaptiveTTLController(target, rdb)
+	if err != nil {
+		return nil, err
+	}
+
 	configStore := &GatewayConfigStore{
 		redis: rdb,
 	}
@@ -85,6 +92,12 @@ func NewHandler(target string) (*Handler, error) {
 		ProbabilisticEarlyRefreshEnabled: false,
 		EarlyRefreshBeta:                 1.0,
 		BackendTimeoutMs:                 7000,
+		AdaptiveTTLEnabled:               false,
+		AdaptiveTTLMinFactor:             defaultAdaptiveTTLMinFactor,
+		AdaptiveTTLMaxFactor:             defaultAdaptiveTTLMaxFactor,
+		AdaptiveTTLLatencyThresholdMs:    defaultAdaptiveTTLLatencyThresholdMs,
+		AdaptiveTTLConcurrencyThreshold:  defaultAdaptiveTTLConcurrencyThreshold,
+		AdaptiveTTLAdjustmentIntervalMs:  defaultAdaptiveTTLAdjustmentIntervalMs,
 	}
 
 	ctx := context.Background()
@@ -99,14 +112,15 @@ func NewHandler(target string) (*Handler, error) {
 	}
 
 	return &Handler{
-		proxy:         proxy,
-		cache:         make(map[string]*list.Element),
-		cacheOrder:    list.New(),
-		redis:         rdb,
-		configStore:   configStore,
-		gatewayConfig: gatewayConfig,
-		configVersion: configVersion,
-		inFlight:      make(map[string]*inFlightCall),
+		proxy:                 proxy,
+		cache:                 make(map[string]*list.Element),
+		cacheOrder:            list.New(),
+		redis:                 rdb,
+		configStore:           configStore,
+		gatewayConfig:         gatewayConfig,
+		configVersion:         configVersion,
+		adaptiveTTLController: adaptiveTTLController,
+		inFlight:              make(map[string]*inFlightCall),
 	}, nil
 }
 
@@ -129,8 +143,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	key := r.URL.RequestURI()
 
-	ttlL1 := time.Duration(config.L1TTLSeconds) * time.Second
-	ttlL2 := time.Duration(config.L2TTLSeconds) * time.Second
+	ttlL1, ttlL2, _ := h.adaptiveTTLController.effectiveCacheTTLs(config)
 
 	defer func() {
 		duration := time.Since(start)

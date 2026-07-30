@@ -117,6 +117,72 @@ func (h *Handler) updateCacheConfig(
 		return
 	}
 
+	if newConfig.AdaptiveTTLMinFactor <= 0 {
+		http.Error(
+			w,
+			"AdaptiveTTLMinFactor must be greater than zero",
+			http.StatusBadRequest,
+		)
+		return
+	}
+
+	if newConfig.AdaptiveTTLMinFactor >
+		adaptiveTTLInitialFactor {
+		http.Error(
+			w,
+			"AdaptiveTTLMinFactor must not be greater than 1",
+			http.StatusBadRequest,
+		)
+		return
+	}
+
+	if newConfig.AdaptiveTTLMaxFactor <
+		adaptiveTTLInitialFactor {
+		http.Error(
+			w,
+			"AdaptiveTTLMaxFactor must not be smaller than 1",
+			http.StatusBadRequest,
+		)
+		return
+	}
+
+	if newConfig.AdaptiveTTLMaxFactor <
+		newConfig.AdaptiveTTLMinFactor {
+		http.Error(
+			w,
+			"AdaptiveTTLMaxFactor must not be smaller than AdaptiveTTLMinFactor",
+			http.StatusBadRequest,
+		)
+		return
+	}
+
+	if newConfig.AdaptiveTTLLatencyThresholdMs <= 0 {
+		http.Error(
+			w,
+			"AdaptiveTTLLatencyThresholdMs must be greater than zero",
+			http.StatusBadRequest,
+		)
+		return
+	}
+
+	if newConfig.AdaptiveTTLConcurrencyThreshold <= 0 {
+		http.Error(
+			w,
+			"AdaptiveTTLConcurrencyThreshold must be greater than zero",
+			http.StatusBadRequest,
+		)
+		return
+	}
+
+	if newConfig.AdaptiveTTLAdjustmentIntervalMs <= 0 {
+		http.Error(
+			w,
+			"AdaptiveTTLAdjustmentIntervalMs must be greater than zero",
+			http.StatusBadRequest,
+		)
+		return
+	}
+
 	version, err := h.configStore.Update(
 		r.Context(),
 		newConfig,
@@ -149,8 +215,15 @@ func (h *Handler) updateCacheConfig(
 		return
 	}
 
+	if err := h.adaptiveTTLController.Reset(r.Context(), newConfig.AdaptiveTTLEnabled); err != nil {
+		log.Println("Failed to reset adaptive TTL controller:", err)
+
+		http.Error(w, "Configuration changed, but resetting adaptive TTL failed", http.StatusInternalServerError)
+		return
+	}
+
 	log.Printf(
-		"Gateway configuration changed: L1=%d, L2=%d, TTL L1=%d, TTL L2=%d, SingleFlightEnabled=%t, DistributedLockEnabled=%t, ProbabilisticEarlyRefreshEnabled=%t, EarlyRefreshBeta=%.2f, BackendTimeout=%d",
+		"Gateway configuration changed: L1=%d, L2=%d, TTL L1=%d, TTL L2=%d, SingleFlightEnabled=%t, DistributedLockEnabled=%t, ProbabilisticEarlyRefreshEnabled=%t, EarlyRefreshBeta=%.2f, BackendTimeout=%d, AdaptiveTTLEnabled=%t, AdaptiveTTLMinFactor=%.2f, AdaptiveTTLMaxFactor=%.2f, AdaptiveTTLLatencyThreshold=%dms, AdaptiveTTLConcurrencyThreshold=%d, AdaptiveTTLAdjustmentInterval=%dms",
 		newConfig.L1MaxEntries,
 		newConfig.L2MaxEntries,
 		newConfig.L1TTLSeconds,
@@ -160,6 +233,12 @@ func (h *Handler) updateCacheConfig(
 		newConfig.ProbabilisticEarlyRefreshEnabled,
 		newConfig.EarlyRefreshBeta,
 		newConfig.BackendTimeoutMs,
+		newConfig.AdaptiveTTLEnabled,
+		newConfig.AdaptiveTTLMinFactor,
+		newConfig.AdaptiveTTLMaxFactor,
+		newConfig.AdaptiveTTLLatencyThresholdMs,
+		newConfig.AdaptiveTTLConcurrencyThreshold,
+		newConfig.AdaptiveTTLAdjustmentIntervalMs,
 	)
 
 	w.Header().Set("Content-Type", "application/json")

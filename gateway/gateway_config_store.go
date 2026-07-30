@@ -100,6 +100,8 @@ func (s *GatewayConfigStore) Get(
 		)
 	}
 
+	config = applyAdaptiveTTLDefaults(config)
+
 	version, err := strconv.ParseInt(versionValue, 10, 64)
 	if err != nil {
 		return GatewayConfig{}, 0, fmt.Errorf(
