@@ -23,6 +23,9 @@ type Handler struct {
 	configMu sync.RWMutex
 
 	Active int64
+
+	loadSignalsMu    sync.RWMutex
+	requestDurations []time.Duration
 }
 
 func (handler *Handler) Get(writer http.ResponseWriter, req *http.Request) {
@@ -41,6 +44,12 @@ func (handler *Handler) Get(writer http.ResponseWriter, req *http.Request) {
 	case <-req.Context().Done():
 		return
 	}
+
+	requestStartedAt := time.Now()
+
+	defer func() {
+		handler.recordRequestDuration(time.Since(requestStartedAt))
+	}()
 
 	active := atomic.AddInt64(&handler.Active, 1)
 	backendActiveRequests.Inc()

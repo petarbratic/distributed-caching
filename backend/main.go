@@ -51,6 +51,7 @@ func main() {
 	handler.RegisterMetrics()
 
 	r := mux.NewRouter()
+	r.HandleFunc("/load", backendHandler.GetLoadSignals).Methods("GET")
 	r.Handle("/metrics", promhttp.Handler())
 	r.HandleFunc("/config", backendHandler.GetConfig).Methods("GET")
 	r.HandleFunc("/config", backendHandler.UpdateConfig).Methods("PUT")
