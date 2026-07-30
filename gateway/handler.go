@@ -143,8 +143,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	key := r.URL.RequestURI()
 
-	ttlL1 := time.Duration(config.L1TTLSeconds) * time.Second
-	ttlL2 := time.Duration(config.L2TTLSeconds) * time.Second
+	ttlL1, ttlL2, _ := h.adaptiveTTLController.effectiveCacheTTLs(config)
 
 	defer func() {
 		duration := time.Since(start)

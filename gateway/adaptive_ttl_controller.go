@@ -499,3 +499,23 @@ func (controller *AdaptiveTTLController) applySnapshot(snapshot AdaptiveTTLSnaps
 
 	controller.consecutiveCongestedReadings = snapshot.ConsecutiveCongestedReadings
 }
+
+func (controller *AdaptiveTTLController) effectiveCacheTTLs(config GatewayConfig) (time.Duration, time.Duration, float64) {
+	factor := adaptiveTTLInitialFactor
+
+	if config.AdaptiveTTLEnabled {
+		snapshot := controller.Snapshot()
+
+		factor = clampAdaptiveTTLFactor(snapshot.Factor, config.AdaptiveTTLMinFactor, config.AdaptiveTTLMaxFactor)
+	}
+
+	baseL1TTL := time.Duration(config.L1TTLSeconds) * time.Second
+
+	baseL2TTL := time.Duration(config.L2TTLSeconds) * time.Second
+
+	effectiveL1TTL := time.Duration(float64(baseL1TTL) * factor)
+
+	effectiveL2TTL := time.Duration(float64(baseL2TTL) * factor)
+
+	return effectiveL1TTL, effectiveL2TTL, factor
+}
