@@ -5,8 +5,8 @@
     "name": "adb6qc8",
     "namespace": "default",
     "uid": "d2ce46e6-0442-4ef5-bb54-284ceba34234",
-    "resourceVersion": "1785321522496019",
-    "generation": 45,
+    "resourceVersion": "1785416013202004",
+    "generation": 60,
     "creationTimestamp": "2026-07-26T09:43:04Z",
     "labels": {
       "grafana.app/deprecatedInternalID": "651320847040512"
@@ -16,7 +16,7 @@
       "grafana.app/folder": "",
       "grafana.app/saved-from-ui": "Grafana v13.1.1 (a9cee6e172)",
       "grafana.app/updatedBy": "user:dft6kfa1nh8g0a",
-      "grafana.app/updatedTimestamp": "2026-07-29T10:38:42Z"
+      "grafana.app/updatedTimestamp": "2026-07-30T12:53:33Z"
     }
   },
   "spec": {
@@ -288,7 +288,7 @@
                         "editorMode": "code",
                         "expr": "sum(\r\n  rate(backend_requests_total{\r\n    job=\"backend\"\r\n  }[$__rate_interval])\r\n)",
                         "interval": "1s",
-                        "legendFormat": "__auto",
+                        "legendFormat": "Backend throughput",
                         "range": true
                       }
                     },
@@ -409,7 +409,7 @@
                         "editorMode": "code",
                         "expr": "sum(\r\n  backend_active_requests{\r\n    job=\"backend\"\r\n  }\r\n)",
                         "interval": "1s",
-                        "legendFormat": "__auto",
+                        "legendFormat": "Active backend requests",
                         "range": true
                       }
                     },
@@ -530,7 +530,7 @@
                         "editorMode": "code",
                         "expr": "sum(\r\n  rate(gateway_failed_requests_total{\r\n    job=\"gateway\"\r\n  }[$__rate_interval])\r\n)\r\n/\r\nclamp_min(\r\n  sum(\r\n    rate(gateway_http_requests_total{\r\n      job=\"gateway\"\r\n    }[$__rate_interval])\r\n  ),\r\n  1e-9\r\n)",
                         "interval": "1s",
-                        "legendFormat": "__auto",
+                        "legendFormat": "Failed request ratio",
                         "range": true
                       }
                     },
@@ -651,7 +651,7 @@
                         "editorMode": "code",
                         "expr": "sum(\r\n  gateway_singleflight_waiting_requests{\r\n    job=\"gateway\"\r\n  }\r\n)",
                         "interval": "1s",
-                        "legendFormat": "__auto",
+                        "legendFormat": "Requests",
                         "range": true
                       }
                     },
@@ -891,6 +891,127 @@
           }
         }
       },
+      "panel-15": {
+        "kind": "Panel",
+        "spec": {
+          "id": 15,
+          "title": "FAF for keys 1-6",
+          "description": "",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "fft9ge7oo6ps0d"
+                      },
+                      "spec": {
+                        "editorMode": "code",
+                        "expr": "sum by (key) (\r\n  gateway_backend_calls_total{\r\n    job=\"gateway\",\r\n    key=~\"/api/backend/(1|2|3|4|5|6)\"\r\n  }\r\n)\r\n/\r\nclamp_min(\r\n  sum by (key) (\r\n    gateway_logical_refreshes_total{\r\n      job=\"gateway\",\r\n      key=~\"/api/backend/(1|2|3|4|5|6)\"\r\n    }\r\n  ),\r\n  1\r\n)",
+                        "interval": "1s",
+                        "legendFormat": "{{key}}",
+                        "range": true
+                      }
+                    },
+                    "refId": "A",
+                    "hidden": false
+                  }
+                }
+              ],
+              "transformations": [],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "timeseries",
+            "version": "13.1.1",
+            "spec": {
+              "options": {
+                "annotations": {
+                  "clustering": -1,
+                  "multiLane": false
+                },
+                "legend": {
+                  "calcs": [],
+                  "displayMode": "list",
+                  "enableFacetedFilter": false,
+                  "overflow": "ellipsis",
+                  "placement": "bottom",
+                  "showLegend": true
+                },
+                "tooltip": {
+                  "hideZeros": false,
+                  "mode": "single",
+                  "sort": "none"
+                }
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "value": 0,
+                        "color": "green"
+                      },
+                      {
+                        "value": 80,
+                        "color": "red"
+                      }
+                    ]
+                  },
+                  "color": {
+                    "mode": "palette-classic"
+                  },
+                  "custom": {
+                    "axisBorderShow": false,
+                    "axisCenteredZero": false,
+                    "axisColorMode": "text",
+                    "axisLabel": "",
+                    "axisPlacement": "auto",
+                    "barAlignment": 0,
+                    "barWidthFactor": 0.6,
+                    "drawStyle": "line",
+                    "fillOpacity": 0,
+                    "gradientMode": "none",
+                    "hideFrom": {
+                      "legend": false,
+                      "tooltip": false,
+                      "viz": false
+                    },
+                    "insertNulls": false,
+                    "lineInterpolation": "linear",
+                    "lineWidth": 1,
+                    "pointSize": 5,
+                    "scaleDistribution": {
+                      "type": "linear"
+                    },
+                    "showPoints": "auto",
+                    "showValues": false,
+                    "spanNulls": false,
+                    "stacking": {
+                      "group": "A",
+                      "mode": "none"
+                    },
+                    "thresholdsStyle": {
+                      "mode": "off"
+                    }
+                  }
+                },
+                "overrides": []
+              }
+            }
+          }
+        }
+      },
       "panel-2": {
         "kind": "Panel",
         "spec": {
@@ -916,7 +1037,7 @@
                         "editorMode": "code",
                         "expr": "sum(\r\n  rate(gateway_request_duration_seconds_sum{\r\n    job=\"gateway\"\r\n  }[$__rate_interval])\r\n)\r\n/\r\nclamp_min(\r\n  sum(\r\n    rate(gateway_request_duration_seconds_count{\r\n      job=\"gateway\"\r\n    }[$__rate_interval])\r\n  ),\r\n  1e-9\r\n)",
                         "interval": "1s",
-                        "legendFormat": "__auto",
+                        "legendFormat": "Average request duration",
                         "range": true
                       }
                     },
@@ -1037,7 +1158,7 @@
                         "editorMode": "code",
                         "expr": "sum(\r\n  rate(gateway_backend_duration_seconds_sum{\r\n    job=\"gateway\"\r\n  }[$__rate_interval])\r\n)\r\n/\r\nclamp_min(\r\n  sum(\r\n    rate(gateway_backend_duration_seconds_count{\r\n      job=\"gateway\"\r\n    }[$__rate_interval])\r\n  ),\r\n  1e-9\r\n)",
                         "interval": "1s",
-                        "legendFormat": "__auto",
+                        "legendFormat": "Average backend duration",
                         "range": true
                       }
                     },
@@ -1137,7 +1258,7 @@
         "kind": "Panel",
         "spec": {
           "id": 4,
-          "title": "FAF",
+          "title": "Failure Amplification Factor",
           "description": "",
           "links": [],
           "data": {
@@ -1158,7 +1279,7 @@
                         "editorMode": "code",
                         "expr": "sum(\r\n  increase(backend_requests_total{\r\n    job=\"backend\"\r\n  }[$__range])\r\n)\r\n/\r\nclamp_min(\r\n  sum(\r\n    increase(gateway_http_requests_total{\r\n      job=\"gateway\"\r\n    }[$__range])\r\n  ),\r\n  1\r\n)",
                         "interval": "1s",
-                        "legendFormat": "__auto",
+                        "legendFormat": "FAF",
                         "range": true
                       }
                     },
@@ -1279,7 +1400,7 @@
                         "editorMode": "code",
                         "expr": "(\r\n  sum(\r\n    rate(gateway_l1_hits_total{\r\n      job=\"gateway\"\r\n    }[$__rate_interval])\r\n  )\r\n  +\r\n  sum(\r\n    rate(gateway_l2_hits_total{\r\n      job=\"gateway\"\r\n    }[$__rate_interval])\r\n  )\r\n)\r\n/\r\nclamp_min(\r\n  sum(\r\n    rate(gateway_http_requests_total{\r\n      job=\"gateway\"\r\n    }[$__rate_interval])\r\n  ),\r\n  1e-9\r\n)",
                         "interval": "1s",
-                        "legendFormat": "__auto",
+                        "legendFormat": "CHR Total",
                         "range": true
                       }
                     },
@@ -1400,7 +1521,7 @@
                         "editorMode": "code",
                         "expr": "sum(\r\n  rate(gateway_l1_hits_total{\r\n    job=\"gateway\"\r\n  }[$__rate_interval])\r\n)\r\n/\r\nclamp_min(\r\n  sum(\r\n    rate(gateway_http_requests_total{\r\n      job=\"gateway\"\r\n    }[$__rate_interval])\r\n  ),\r\n  1e-9\r\n)",
                         "interval": "1s",
-                        "legendFormat": "__auto",
+                        "legendFormat": "CHR L1",
                         "range": true
                       }
                     },
@@ -1642,7 +1763,7 @@
                         "editorMode": "code",
                         "expr": "histogram_quantile(\r\n  0.95,\r\n  sum by (le) (\r\n    rate(gateway_request_duration_seconds_bucket{\r\n      job=\"gateway\"\r\n    }[$__rate_interval])\r\n  )\r\n)",
                         "interval": "1s",
-                        "legendFormat": "__auto",
+                        "legendFormat": "P95",
                         "range": true
                       }
                     },
@@ -1763,7 +1884,7 @@
                         "editorMode": "code",
                         "expr": "histogram_quantile(\r\n  0.99,\r\n  sum by (le) (\r\n    rate(gateway_request_duration_seconds_bucket{\r\n      job=\"gateway\"\r\n    }[$__rate_interval])\r\n  )\r\n)",
                         "interval": "1s",
-                        "legendFormat": "__auto",
+                        "legendFormat": "P99",
                         "range": true
                       }
                     },
@@ -1912,7 +2033,7 @@
               "height": 8,
               "element": {
                 "kind": "ElementReference",
-                "name": "panel-4"
+                "name": "panel-5"
               }
             }
           },
@@ -1925,7 +2046,7 @@
               "height": 8,
               "element": {
                 "kind": "ElementReference",
-                "name": "panel-5"
+                "name": "panel-6"
               }
             }
           },
@@ -1938,7 +2059,7 @@
               "height": 8,
               "element": {
                 "kind": "ElementReference",
-                "name": "panel-6"
+                "name": "panel-8"
               }
             }
           },
@@ -1964,7 +2085,7 @@
               "height": 8,
               "element": {
                 "kind": "ElementReference",
-                "name": "panel-8"
+                "name": "panel-10"
               }
             }
           },
@@ -1990,7 +2111,7 @@
               "height": 8,
               "element": {
                 "kind": "ElementReference",
-                "name": "panel-10"
+                "name": "panel-12"
               }
             }
           },
@@ -2016,7 +2137,7 @@
               "height": 8,
               "element": {
                 "kind": "ElementReference",
-                "name": "panel-12"
+                "name": "panel-14"
               }
             }
           },
@@ -2042,7 +2163,20 @@
               "height": 8,
               "element": {
                 "kind": "ElementReference",
-                "name": "panel-14"
+                "name": "panel-4"
+              }
+            }
+          },
+          {
+            "kind": "GridLayoutItem",
+            "spec": {
+              "x": 12,
+              "y": 53,
+              "width": 12,
+              "height": 8,
+              "element": {
+                "kind": "ElementReference",
+                "name": "panel-15"
               }
             }
           }
