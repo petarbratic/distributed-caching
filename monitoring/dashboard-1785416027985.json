@@ -5,8 +5,8 @@
     "name": "adb6qc8",
     "namespace": "default",
     "uid": "d2ce46e6-0442-4ef5-bb54-284ceba34234",
-    "resourceVersion": "1785416013202004",
-    "generation": 60,
+    "resourceVersion": "1785416124282994",
+    "generation": 61,
     "creationTimestamp": "2026-07-26T09:43:04Z",
     "labels": {
       "grafana.app/deprecatedInternalID": "651320847040512"
@@ -16,7 +16,7 @@
       "grafana.app/folder": "",
       "grafana.app/saved-from-ui": "Grafana v13.1.1 (a9cee6e172)",
       "grafana.app/updatedBy": "user:dft6kfa1nh8g0a",
-      "grafana.app/updatedTimestamp": "2026-07-30T12:53:33Z"
+      "grafana.app/updatedTimestamp": "2026-07-30T12:55:24Z"
     }
   },
   "spec": {
@@ -1642,7 +1642,7 @@
                         "editorMode": "code",
                         "expr": "sum(\r\n  rate(gateway_l2_hits_total{\r\n    job=\"gateway\"\r\n  }[$__rate_interval])\r\n)\r\n/\r\nclamp_min(\r\n  sum(\r\n    rate(gateway_http_requests_total{\r\n      job=\"gateway\"\r\n    }[$__rate_interval])\r\n  ),\r\n  1e-9\r\n)",
                         "interval": "1s",
-                        "legendFormat": "__auto",
+                        "legendFormat": "CHR L2",
                         "range": true
                       }
                     },
