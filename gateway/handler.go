@@ -30,6 +30,8 @@ type Handler struct {
 	gatewayConfig GatewayConfig
 	configVersion int64
 
+	adaptiveTTLController *AdaptiveTTLController
+
 	inFlightMu sync.Mutex
 	inFlight   map[string]*inFlightCall
 }
@@ -71,6 +73,11 @@ func NewHandler(target string) (*Handler, error) {
 		Addr: "redis:6379",
 	})
 
+	adaptiveTTLController, err := NewAdaptiveTTLController(target, rdb)
+	if err != nil {
+		return nil, err
+	}
+
 	configStore := &GatewayConfigStore{
 		redis: rdb,
 	}
@@ -105,14 +112,15 @@ func NewHandler(target string) (*Handler, error) {
 	}
 
 	return &Handler{
-		proxy:         proxy,
-		cache:         make(map[string]*list.Element),
-		cacheOrder:    list.New(),
-		redis:         rdb,
-		configStore:   configStore,
-		gatewayConfig: gatewayConfig,
-		configVersion: configVersion,
-		inFlight:      make(map[string]*inFlightCall),
+		proxy:                 proxy,
+		cache:                 make(map[string]*list.Element),
+		cacheOrder:            list.New(),
+		redis:                 rdb,
+		configStore:           configStore,
+		gatewayConfig:         gatewayConfig,
+		configVersion:         configVersion,
+		adaptiveTTLController: adaptiveTTLController,
+		inFlight:              make(map[string]*inFlightCall),
 	}, nil
 }
 
