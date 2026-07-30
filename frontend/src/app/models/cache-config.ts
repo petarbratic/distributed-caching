@@ -13,6 +13,13 @@ export interface CacheConfig {
   probabilisticEarlyRefreshEnabled: boolean;
   earlyRefreshBeta: number;
   backendTimeoutMs: number;
+
+  adaptiveTTLEnabled: boolean;
+  adaptiveTTLMinFactor: number;
+  adaptiveTTLMaxFactor: number;
+  adaptiveTTLLatencyThresholdMs: number;
+  adaptiveTTLConcurrencyThreshold: number;
+  adaptiveTTLAdjustmentIntervalMs: number;
 }
 
 export interface GatewayConfig {
@@ -25,6 +32,12 @@ export interface GatewayConfig {
   probabilisticEarlyRefreshEnabled: boolean;
   earlyRefreshBeta: number;
   backendTimeoutMs: number;
+  adaptiveTTLEnabled: boolean;
+  adaptiveTTLMinFactor: number;
+  adaptiveTTLMaxFactor: number;
+  adaptiveTTLLatencyThresholdMs: number;
+  adaptiveTTLConcurrencyThreshold: number;
+  adaptiveTTLAdjustmentIntervalMs: number;
 }
 
 export interface BackendConfig {

@@ -32,6 +32,12 @@ export class App implements OnInit {
     probabilisticEarlyRefreshEnabled: false,
     earlyRefreshBeta: 1,
     backendTimeoutMs: 5000,
+    adaptiveTTLEnabled: false,
+    adaptiveTTLMinFactor: 0.75,
+    adaptiveTTLMaxFactor: 4,
+    adaptiveTTLLatencyThresholdMs: 500,
+    adaptiveTTLConcurrencyThreshold: 12,
+    adaptiveTTLAdjustmentIntervalMs: 5000,
   };
 
   loading = false;
@@ -134,6 +140,45 @@ export class App implements OnInit {
       return;
     }
 
+    if (this.cacheConfig.adaptiveTTLMinFactor <= 0) {
+      this.errorMessage =
+        'Adaptive TTL minimum factor must be greater than 0.';
+      return;
+    }
+
+    if (
+      this.cacheConfig.adaptiveTTLMaxFactor <
+      this.cacheConfig.adaptiveTTLMinFactor
+    ) {
+      this.errorMessage =
+        'Adaptive TTL maximum factor cannot be smaller than the minimum factor.';
+      return;
+    }
+
+    if (
+      this.cacheConfig.adaptiveTTLLatencyThresholdMs <= 0
+    ) {
+      this.errorMessage =
+        'Adaptive TTL latency threshold must be greater than 0.';
+      return;
+    }
+
+    if (
+      this.cacheConfig.adaptiveTTLConcurrencyThreshold <= 0
+    ) {
+      this.errorMessage =
+        'Adaptive TTL concurrency threshold must be greater than 0.';
+      return;
+    }
+
+    if (
+      this.cacheConfig.adaptiveTTLAdjustmentIntervalMs <= 0
+    ) {
+      this.errorMessage =
+        'Adaptive TTL adjustment interval must be greater than 0.';
+      return;
+    }
+
     this.loading = true;
 
     const gatewayConfig: GatewayConfig = {
@@ -151,6 +196,18 @@ export class App implements OnInit {
         this.cacheConfig.earlyRefreshBeta,
       backendTimeoutMs:
         this.cacheConfig.backendTimeoutMs,
+      adaptiveTTLEnabled:
+        this.cacheConfig.adaptiveTTLEnabled,
+      adaptiveTTLMinFactor:
+        this.cacheConfig.adaptiveTTLMinFactor,
+      adaptiveTTLMaxFactor:
+        this.cacheConfig.adaptiveTTLMaxFactor,
+      adaptiveTTLLatencyThresholdMs:
+        this.cacheConfig.adaptiveTTLLatencyThresholdMs,
+      adaptiveTTLConcurrencyThreshold:
+        this.cacheConfig.adaptiveTTLConcurrencyThreshold,
+      adaptiveTTLAdjustmentIntervalMs:
+        this.cacheConfig.adaptiveTTLAdjustmentIntervalMs,
     };
 
     const backendConfig: BackendConfig = {
