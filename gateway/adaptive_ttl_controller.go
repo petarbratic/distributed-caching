@@ -28,6 +28,8 @@ const (
 	adaptiveTTLDecreaseStep       = 0.1
 
 	adaptiveTTLFallbackInterval = 5 * time.Second
+
+	adaptiveTTLControllerLockPollInterval = 25 * time.Millisecond
 )
 
 const (
@@ -518,4 +520,48 @@ func (controller *AdaptiveTTLController) effectiveCacheTTLs(config GatewayConfig
 	effectiveL2TTL := time.Duration(float64(baseL2TTL) * factor)
 
 	return effectiveL1TTL, effectiveL2TTL, factor
+}
+
+func (controller *AdaptiveTTLController) Reset(ctx context.Context, enabled bool) error {
+	for {
+		token, acquired, err := controller.tryAcquireControllerLock(ctx)
+		if err != nil {
+			return fmt.Errorf("acquire controller lock for reset: %w", err)
+		}
+
+		if acquired {
+			defer controller.releaseControllerLock(token)
+
+			state := AdaptiveTTLStateDisabled
+
+			if enabled {
+				state = AdaptiveTTLStateWarning
+			}
+
+			snapshot := AdaptiveTTLSnapshot{
+				Factor: adaptiveTTLInitialFactor,
+				State:  state,
+
+				ConsecutiveStableReadings:    0,
+				ConsecutiveCongestedReadings: 0,
+			}
+
+			if err := controller.saveSharedSnapshot(ctx, snapshot); err != nil {
+				return fmt.Errorf("reset adaptive TTL snapshot: %w", err)
+			}
+
+			controller.applySnapshot(snapshot)
+
+			log.Printf("Adaptive TTL state reset after configuration change: factor=%.2f, state=%s",
+				snapshot.Factor,
+				snapshot.State,
+			)
+
+			return nil
+		}
+
+		if !waitForAdaptiveTTLInterval(ctx, adaptiveTTLControllerLockPollInterval) {
+			return ctx.Err()
+		}
+	}
 }

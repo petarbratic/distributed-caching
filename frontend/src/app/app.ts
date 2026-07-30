@@ -146,6 +146,18 @@ export class App implements OnInit {
       return;
     }
 
+    if (this.cacheConfig.adaptiveTTLMinFactor > 1) {
+      this.errorMessage =
+        'Adaptive TTL minimum factor cannot be greater than 1.';
+      return;
+    }
+
+    if (this.cacheConfig.adaptiveTTLMaxFactor < 1) {
+      this.errorMessage =
+        'Adaptive TTL maximum factor cannot be smaller than 1.';
+      return;
+    }
+
     if (
       this.cacheConfig.adaptiveTTLMaxFactor <
       this.cacheConfig.adaptiveTTLMinFactor

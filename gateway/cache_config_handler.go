@@ -126,6 +126,26 @@ func (h *Handler) updateCacheConfig(
 		return
 	}
 
+	if newConfig.AdaptiveTTLMinFactor >
+		adaptiveTTLInitialFactor {
+		http.Error(
+			w,
+			"AdaptiveTTLMinFactor must not be greater than 1",
+			http.StatusBadRequest,
+		)
+		return
+	}
+
+	if newConfig.AdaptiveTTLMaxFactor <
+		adaptiveTTLInitialFactor {
+		http.Error(
+			w,
+			"AdaptiveTTLMaxFactor must not be smaller than 1",
+			http.StatusBadRequest,
+		)
+		return
+	}
+
 	if newConfig.AdaptiveTTLMaxFactor <
 		newConfig.AdaptiveTTLMinFactor {
 		http.Error(
@@ -192,6 +212,13 @@ func (h *Handler) updateCacheConfig(
 			"Configuration changed, but clearing L2 failed",
 			http.StatusInternalServerError,
 		)
+		return
+	}
+
+	if err := h.adaptiveTTLController.Reset(r.Context(), newConfig.AdaptiveTTLEnabled); err != nil {
+		log.Println("Failed to reset adaptive TTL controller:", err)
+
+		http.Error(w, "Configuration changed, but resetting adaptive TTL failed", http.StatusInternalServerError)
 		return
 	}
 
