@@ -30,6 +30,24 @@ const (
 	adaptiveTTLFallbackInterval = 5 * time.Second
 )
 
+const (
+	adaptiveTTLSnapshotRedisKey = "gateway:adaptive-ttl:snapshot"
+
+	adaptiveTTLControllerLockRedisKey = "gateway:adaptive-ttl:controller-lock"
+
+	adaptiveTTLControllerLockTTL = 5 * time.Second
+
+	adaptiveTTLControllerLockReleaseTimeout = time.Second
+)
+
+var releaseAdaptiveTTLControllerLockScript = redis.NewScript(`
+		if redis.call("GET", KEYS[1]) == ARGV[1] then
+			return redis.call("DEL", KEYS[1])
+		end
+
+		return 0
+	`)
+
 type AdaptiveTTLState string
 
 const (
@@ -48,8 +66,12 @@ type BackendLoadSignals struct {
 }
 
 type AdaptiveTTLSnapshot struct {
-	Factor float64
-	State  AdaptiveTTLState
+	Factor float64          `json:"factor"`
+	State  AdaptiveTTLState `json:"state"`
+
+	ConsecutiveStableReadings int `json:"consecutiveStableReadings"`
+
+	ConsecutiveCongestedReadings int `json:"consecutiveCongestedReadings"`
 }
 
 type GatewayConfigProvider func(context.Context) (GatewayConfig, error)
@@ -94,6 +116,10 @@ func (controller *AdaptiveTTLController) Snapshot() AdaptiveTTLSnapshot {
 	return AdaptiveTTLSnapshot{
 		Factor: controller.currentFactor,
 		State:  controller.currentState,
+
+		ConsecutiveStableReadings: controller.consecutiveStableReadings,
+
+		ConsecutiveCongestedReadings: controller.consecutiveCongestedReadings,
 	}
 }
 
@@ -117,28 +143,9 @@ func (controller *AdaptiveTTLController) Run(ctx context.Context, configProvider
 			interval = adaptiveTTLFallbackInterval
 		}
 
-		if !config.AdaptiveTTLEnabled {
-			controller.setDisabled()
-
-			if !waitForAdaptiveTTLInterval(ctx, interval) {
-				return
-			}
-
-			continue
+		if err := controller.updateSharedState(ctx, config); err != nil {
+			log.Printf("Adaptive TTL update failed: %v", err)
 		}
-
-		signals, err := controller.readBackendLoadSignals(ctx)
-		if err != nil {
-			log.Printf("Adaptive TTL failed to read backend load signals: %v", err)
-
-			if !waitForAdaptiveTTLInterval(ctx, interval) {
-				return
-			}
-
-			continue
-		}
-
-		controller.processSignals(config, signals)
 
 		if !waitForAdaptiveTTLInterval(ctx, interval) {
 			return
@@ -328,4 +335,167 @@ func waitForAdaptiveTTLInterval(ctx context.Context, interval time.Duration) boo
 	case <-ctx.Done():
 		return false
 	}
+}
+
+func (controller *AdaptiveTTLController) updateSharedState(ctx context.Context, config GatewayConfig) error {
+	token, acquired, err := controller.tryAcquireControllerLock(ctx)
+	if err != nil {
+		return err
+	}
+
+	if !acquired {
+		return controller.synchronizeFromRedis(ctx)
+	}
+
+	defer controller.releaseControllerLock(token)
+
+	snapshot, err := controller.loadSharedSnapshot(ctx)
+	if err != nil {
+		return err
+	}
+
+	controller.applySnapshot(snapshot)
+
+	if !config.AdaptiveTTLEnabled {
+		controller.setDisabled()
+
+		if err := controller.saveSharedSnapshot(ctx, controller.Snapshot()); err != nil {
+			return err
+		}
+
+		return nil
+	}
+
+	signals, err := controller.readBackendLoadSignals(ctx)
+	if err != nil {
+		return err
+	}
+
+	controller.processSignals(config, signals)
+
+	if err := controller.saveSharedSnapshot(ctx, controller.Snapshot()); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (controller *AdaptiveTTLController) tryAcquireControllerLock(ctx context.Context) (string, bool, error) {
+	token, err := newDistributedLockToken()
+	if err != nil {
+		return "", false, fmt.Errorf("generate adaptive TTL controller lock token: %w", err)
+	}
+
+	acquired, err := controller.redis.SetNX(ctx, adaptiveTTLControllerLockRedisKey, token, adaptiveTTLControllerLockTTL).Result()
+	if err != nil {
+		return "", false, fmt.Errorf("acquire adaptive TTL controller lock: %w", err)
+	}
+
+	return token, acquired, nil
+}
+
+func (controller *AdaptiveTTLController) releaseControllerLock(token string) {
+	ctx, cancel := context.WithTimeout(context.Background(), adaptiveTTLControllerLockReleaseTimeout)
+	defer cancel()
+
+	released, err := releaseAdaptiveTTLControllerLockScript.Run(
+		ctx,
+		controller.redis,
+		[]string{
+			adaptiveTTLControllerLockRedisKey,
+		},
+		token,
+	).Int64()
+
+	if err != nil {
+		log.Printf("Adaptive TTL controller lock release failed: %v", err)
+		return
+	}
+
+	if released == 0 {
+		log.Printf("Adaptive TTL controller lock was not released because ownership changed or the lock expired")
+	}
+}
+
+func (controller *AdaptiveTTLController) loadSharedSnapshot(ctx context.Context) (AdaptiveTTLSnapshot, error) {
+	data, err := controller.redis.Get(ctx, adaptiveTTLSnapshotRedisKey).Bytes()
+
+	if err == redis.Nil {
+		initialSnapshot := AdaptiveTTLSnapshot{
+			Factor: adaptiveTTLInitialFactor,
+			State:  AdaptiveTTLStateDisabled,
+		}
+
+		initialData, marshalErr := json.Marshal(initialSnapshot)
+		if marshalErr != nil {
+			return AdaptiveTTLSnapshot{}, fmt.Errorf("encode initial adaptive TTL snapshot: %w", marshalErr)
+		}
+
+		created, setErr := controller.redis.SetNX(ctx, adaptiveTTLSnapshotRedisKey, initialData, 0).Result()
+		if setErr != nil {
+			return AdaptiveTTLSnapshot{}, fmt.Errorf("initialize adaptive TTL snapshot: %w", setErr)
+		}
+
+		if created {
+			return initialSnapshot, nil
+		}
+
+		data, err = controller.redis.Get(ctx, adaptiveTTLSnapshotRedisKey).Bytes()
+	}
+
+	if err != nil {
+		return AdaptiveTTLSnapshot{}, fmt.Errorf("read adaptive TTL snapshot: %w", err)
+	}
+
+	var snapshot AdaptiveTTLSnapshot
+
+	if err := json.Unmarshal(data, &snapshot); err != nil {
+		return AdaptiveTTLSnapshot{}, fmt.Errorf("decode adaptive TTL snapshot: %w", err)
+	}
+
+	if snapshot.Factor <= 0 {
+		return AdaptiveTTLSnapshot{}, fmt.Errorf("invalid adaptive TTL factor in Redis: %.2f", snapshot.Factor)
+	}
+
+	if snapshot.State == "" {
+		return AdaptiveTTLSnapshot{}, fmt.Errorf("adaptive TTL state is missing in Redis")
+	}
+
+	return snapshot, nil
+}
+
+func (controller *AdaptiveTTLController) saveSharedSnapshot(ctx context.Context, snapshot AdaptiveTTLSnapshot) error {
+	data, err := json.Marshal(snapshot)
+	if err != nil {
+		return fmt.Errorf("encode adaptive TTL snapshot: %w", err)
+	}
+
+	if err := controller.redis.Set(ctx, adaptiveTTLSnapshotRedisKey, data, 0).Err(); err != nil {
+		return fmt.Errorf("save adaptive TTL snapshot: %w", err)
+	}
+
+	return nil
+}
+
+func (controller *AdaptiveTTLController) synchronizeFromRedis(ctx context.Context) error {
+	snapshot, err := controller.loadSharedSnapshot(ctx)
+	if err != nil {
+		return err
+	}
+
+	controller.applySnapshot(snapshot)
+
+	return nil
+}
+
+func (controller *AdaptiveTTLController) applySnapshot(snapshot AdaptiveTTLSnapshot) {
+	controller.mu.Lock()
+	defer controller.mu.Unlock()
+
+	controller.currentFactor = snapshot.Factor
+	controller.currentState = snapshot.State
+
+	controller.consecutiveStableReadings = snapshot.ConsecutiveStableReadings
+
+	controller.consecutiveCongestedReadings = snapshot.ConsecutiveCongestedReadings
 }
