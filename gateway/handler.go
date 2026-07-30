@@ -85,6 +85,12 @@ func NewHandler(target string) (*Handler, error) {
 		ProbabilisticEarlyRefreshEnabled: false,
 		EarlyRefreshBeta:                 1.0,
 		BackendTimeoutMs:                 7000,
+		AdaptiveTTLEnabled:               false,
+		AdaptiveTTLMinFactor:             defaultAdaptiveTTLMinFactor,
+		AdaptiveTTLMaxFactor:             defaultAdaptiveTTLMaxFactor,
+		AdaptiveTTLLatencyThresholdMs:    defaultAdaptiveTTLLatencyThresholdMs,
+		AdaptiveTTLConcurrencyThreshold:  defaultAdaptiveTTLConcurrencyThreshold,
+		AdaptiveTTLAdjustmentIntervalMs:  defaultAdaptiveTTLAdjustmentIntervalMs,
 	}
 
 	ctx := context.Background()
