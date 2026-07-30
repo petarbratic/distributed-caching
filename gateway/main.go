@@ -1,13 +1,13 @@
 package main
 
 import (
-	"log"
-	"net/http"
-	"os"
-
+	"context"
 	"github.com/gorilla/mux"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/cors"
+	"log"
+	"net/http"
+	"os"
 )
 
 func main() {
@@ -25,6 +25,8 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to configure backend proxy: %v", err)
 	}
+
+	go handler.adaptiveTTLController.Run(context.Background(), handler.currentGatewayConfig)
 
 	r := mux.NewRouter()
 
