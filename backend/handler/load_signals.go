@@ -82,6 +82,6 @@ func (h *Handler) GetLoadSignals(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	if err := json.NewEncoder(w).Encode(signals); err != nil {
-		log.Printf("Failed to encode backend load signals: ", err)
+		log.Println("Failed to encode backend load signals: ", err)
 	}
 }
