@@ -96,6 +96,9 @@ services:
     container_name: grafana
     ports:
       - "3000:3000"
+    volumes:
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/dashboard-1785416027985.json:/var/lib/grafana/dashboards/distributed-caching.json:ro
     depends_on:
       - prometheus
     networks:
