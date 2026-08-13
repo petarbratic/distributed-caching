@@ -33,7 +33,7 @@ func (handler *Handler) Get(writer http.ResponseWriter, req *http.Request) {
 
 	totalBackendRequests.Inc()
 
-	active := atomic.AddInt64(&handler.Active, 1)
+	atomic.AddInt64(&handler.Active, 1)
 	backendActiveRequests.Inc()
 
 	defer func() {
@@ -43,29 +43,34 @@ func (handler *Handler) Get(writer http.ResponseWriter, req *http.Request) {
 	}()
 
 	handler.configMu.RLock()
-	defer handler.configMu.RUnlock()
 
 	semaphore := handler.Semaphore
 	concurrentDelayMs := handler.ConcurrentDelayMs
 	baseLatencyMs := handler.BaseLatencyMs
+
+	handler.configMu.RUnlock()
 
 	select {
 	case semaphore <- struct{}{}:
 		defer func() {
 			<-semaphore
 		}()
+
 	case <-req.Context().Done():
 		log.Printf("Request canceled while waiting for backend semaphore")
 		return
 	}
 
+	processingRequests := len(semaphore)
+
 	concurrentDelay :=
-		time.Duration(active) *
+		time.Duration(processingRequests) *
 			time.Duration(concurrentDelayMs) *
 			time.Millisecond
 
 	select {
 	case <-time.After(concurrentDelay):
+
 	case <-req.Context().Done():
 		log.Printf("Request canceled during concurrent delay")
 		return
