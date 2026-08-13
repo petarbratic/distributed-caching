@@ -440,6 +440,17 @@ def plot_metric(
         "series",
     ]
 
+    experiment_colors: dict[str, str] = {}
+    if metric == "faf_by_key":
+        color_cycle = plt.rcParams["axes.prop_cycle"].by_key()["color"]
+        experiment_ids = sorted(
+            metric_frame["experiment_id"].unique()
+        )
+        experiment_colors = {
+            experiment_id: color_cycle[index % len(color_cycle)]
+            for index, experiment_id in enumerate(experiment_ids)
+        }
+
     for (
         experiment_id,
         display_name,
@@ -467,11 +478,18 @@ def plot_metric(
             has_multiple_series=has_multiple_series,
         )
 
+        plot_options = {
+            "linewidth": 1.6,
+            "label": label,
+        }
+
+        if metric == "faf_by_key":
+            plot_options["color"] = experiment_colors[experiment_id]
+
         axis.plot(
             group["relative_time_seconds"],
             group["value"],
-            linewidth=1.6,
-            label=label,
+            **plot_options,
         )
 
     configure_axis(axis, metric)
