@@ -1,14 +1,22 @@
 import http from 'k6/http';
-import { check, sleep } from 'k6';
+import { check } from 'k6';
 
 export const options = {
-  vus: 50,
-  duration: '120s',
+  scenarios: {
+    zipfLoad: {
+      executor: 'constant-arrival-rate',
+      rate: 38,
+      timeUnit: '1s',
+      duration: '120s',
+      preAllocatedVUs: 100,
+      maxVUs: 250,
+    },
+  },
 };
 const firstKey = 1;
 const keyCount = 100;
 const skew = 0.8;
-const sleepConstant = 0.5;
+//const sleepConstant = 0.5;
 
 
 const weights = [];
@@ -49,5 +57,5 @@ export default function () {
     'status 200': (r) => r.status === 200,
   });
 
-  sleep(sleepConstant);
+  //sleep(sleepConstant);
 }
