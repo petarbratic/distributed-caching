@@ -1,0 +1,17 @@
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Generated experiment results
+results/
+
+# Generated images
+*.jpg
+*.jpeg
+*.png
