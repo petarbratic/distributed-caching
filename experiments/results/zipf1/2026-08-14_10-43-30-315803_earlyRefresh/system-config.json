@@ -1,0 +1,11 @@
+{
+  "experiment_config": {},
+  "environment": {
+    "operating_system": "Windows-11-10.0.26200-SP0",
+    "python_version": "3.14.3 (tags/v3.14.3:323c59a, Feb  3 2026, 16:04:56) [MSC v.1944 64 bit (AMD64)]",
+    "git_commit": "1008de1fc743985fb1d639c1619692b23a4a3298",
+    "git_branch": "main",
+    "k6_version": "k6.exe v2.0.0-rc1 (commit/fb943a6a80, go1.26.2, windows/amd64)",
+    "docker_version": "Docker version 29.3.1, build c2be9cc"
+  }
+}

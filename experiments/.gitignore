@@ -9,9 +9,9 @@ venv/
 env/
 
 # Generated experiment results
-results/
+#results/
 
 # Generated images
-*.jpg
-*.jpeg
-*.png
+#*.jpg
+#*.jpeg
+#*.png
