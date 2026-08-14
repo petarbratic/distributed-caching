@@ -89,7 +89,7 @@ func (h *Handler) tryProbabilisticEarlyRefresh(
 		return cachedValue, false
 	}
 
-	refreshedValue.L2Expiration = cachedValue.L2Expiration.Add(ttlL2)
+	refreshedValue.L2Expiration = time.Now().Add(ttlL2)
 
 	redisTTL := time.Until(refreshedValue.L2Expiration)
 
