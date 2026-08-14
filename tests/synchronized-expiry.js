@@ -1,19 +1,25 @@
 import http from 'k6/http';
-import { check, fail, sleep } from 'k6';
+import { check, fail } from 'k6';
 
 const baseURL = 'http://localhost:8080';
 
 const firstKey = 1;
-const keyCount = 6;
+const keyCount = 5;
 const skew = 1.2;
 
-const l2TTLSeconds = 15;
-const expirationMarginSeconds = 0.25;
-const sleepBetweenRequests = 0.5;
-
 export const options = {
-  vus: 100,
-  duration: '30s',
+  scenarios: {
+    synchronizedExpiryLoad: {
+      executor: 'constant-arrival-rate',
+
+      rate: 80,
+      timeUnit: '1s',
+      duration: '60s',
+
+      preAllocatedVUs: 100,
+      maxVUs: 250,
+    },
+  },
 };
 
 const cumulativeProbabilities = createZipfDistribution(
@@ -25,14 +31,18 @@ export function setup() {
   const requests = [];
 
   for (let key = firstKey; key < firstKey + keyCount; key++) {
-    requests.push(`${baseURL}/api/backend/${key}`);
+    requests.push({
+      method: 'GET',
+      url: `${baseURL}/api/backend/${key}`,
+    });
   }
 
   const responses = http.batch(requests);
 
   for (const response of responses) {
     const successful = check(response, {
-      'cache warm-up status is 200': (res) => res.status === 200,
+      'cache warm-up status is 200': (result) =>
+        result.status === 200,
     });
 
     if (!successful) {
@@ -43,11 +53,9 @@ export function setup() {
   }
 
   console.log(
-    `Keys ${firstKey}-${firstKey + keyCount - 1} warmed. ` +
-    `Waiting ${l2TTLSeconds + expirationMarginSeconds}s for synchronized expiry.`,
+    `Keys ${firstKey}-${firstKey + keyCount - 1} ` +
+    'were loaded into the cache with synchronized expiration.',
   );
-
-  sleep(l2TTLSeconds + expirationMarginSeconds);
 }
 
 export default function () {
@@ -55,9 +63,9 @@ export default function () {
 
   const response = http.get(`${baseURL}/api/backend/${key}`);
 
-  check(response, {'status is 200': (res) => res.status === 200});
-
-  sleep(sleepBetweenRequests);
+  check(response, {
+    'status is 200': (result) => result.status === 200,
+  });
 }
 
 function createZipfDistribution(numberOfKeys, zipfSkew) {
