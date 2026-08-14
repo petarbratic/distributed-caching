@@ -4,12 +4,26 @@ import { check } from 'k6';
 export const options = {
   scenarios: {
     zipfLoad: {
-      executor: 'constant-arrival-rate',
-      rate: 38,
+      executor: 'ramping-arrival-rate',
+      startRate: 5,
       timeUnit: '1s',
-      duration: '120s',
+
       preAllocatedVUs: 100,
       maxVUs: 250,
+
+      stages: [
+        // Gradual warm-up: 5 → 78 req/s
+        {
+          target: 78,
+          duration: '15s',
+        },
+
+        // Main phase: constant 78 req/s
+        {
+          target: 78,
+          duration: '225s',
+        },
+      ],
     },
   },
 };
