@@ -42,6 +42,7 @@ METRIC_TITLES = {
     "distributed_lock_failed": (
         "Неуспешни покушаји Distributed Lock-а"
     ),
+    "distributed_lock_attempts": "Покушаји Distributed Lock-а",
     "faf_by_key": "FAF по кључу",
     "average_request_duration": (
         "Просечно трајање захтева"
@@ -71,6 +72,7 @@ METRIC_UNITS = {
     "singleflight_waiting_requests": "Број захтева",
     "distributed_lock_successful": "Број покушаја",
     "distributed_lock_failed": "Број покушаја",
+    "distributed_lock_attempts": "Број покушаја",
     "faf_by_key": "FAF",
     "average_request_duration": "Секунде",
     "average_backend_duration": "Секунде",
@@ -93,8 +95,7 @@ METRIC_ORDER = [
     "active_backend_requests",
     "failed_request_ratio",
     "singleflight_waiting_requests",
-    "distributed_lock_successful",
-    "distributed_lock_failed",
+    "distributed_lock_attempts",
     "faf_by_key",
     "average_request_duration",
     "average_backend_duration",
@@ -353,6 +354,14 @@ def add_display_names(frame: pd.DataFrame) -> pd.DataFrame:
 def ordered_metrics(frame: pd.DataFrame) -> list[str]:
     available = set(frame["metric"].unique())
 
+    distributed_lock_metrics = {
+        "distributed_lock_successful",
+        "distributed_lock_failed",
+    }
+    if available & distributed_lock_metrics:
+        available -= distributed_lock_metrics
+        available.add("distributed_lock_attempts")
+
     known_metrics = [
         metric
         for metric in METRIC_ORDER
@@ -424,9 +433,19 @@ def plot_metric(
     frame: pd.DataFrame,
     metric: str,
 ) -> None:
-    metric_frame = frame[
-        frame["metric"] == metric
-    ].copy()
+    if metric == "distributed_lock_attempts":
+        metric_frame = frame[
+            frame["metric"].isin(
+                {
+                    "distributed_lock_successful",
+                    "distributed_lock_failed",
+                }
+            )
+        ].copy()
+    else:
+        metric_frame = frame[
+            frame["metric"] == metric
+        ].copy()
 
     distinct_series = set(metric_frame["series"])
     has_multiple_series = (
@@ -439,6 +458,8 @@ def plot_metric(
         "_display_name",
         "series",
     ]
+    if metric == "distributed_lock_attempts":
+        group_columns.append("metric")
 
     experiment_colors: dict[str, str] = {}
     labeled_faf_experiments: set[str] = set()
@@ -452,14 +473,21 @@ def plot_metric(
             for index, experiment_id in enumerate(experiment_ids)
         }
 
-    for (
-        experiment_id,
-        display_name,
-        series,
-    ), group in metric_frame.groupby(
+    labeled_lock_metrics: set[str] = set()
+
+    for group_key, group in metric_frame.groupby(
         group_columns,
         sort=True,
     ):
+        experiment_id = group_key[0]
+        display_name = group_key[1]
+        series = group_key[2]
+        lock_metric = (
+            group_key[3]
+            if metric == "distributed_lock_attempts"
+            else ""
+        )
+
         group = group.sort_values(
             "relative_time_seconds"
         )
@@ -473,7 +501,16 @@ def plot_metric(
             .mean()
         )
 
-        if metric == "faf_by_key":
+        if metric == "distributed_lock_attempts":
+            lock_labels = {
+                "distributed_lock_successful": "Успешни",
+                "distributed_lock_failed": "Неуспешни",
+            }
+            label = "_nolegend_"
+            if lock_metric not in labeled_lock_metrics:
+                label = lock_labels[lock_metric]
+                labeled_lock_metrics.add(lock_metric)
+        elif metric == "faf_by_key":
             label = "_nolegend_"
             if experiment_id not in labeled_faf_experiments:
                 label = str(display_name)
@@ -492,6 +529,12 @@ def plot_metric(
 
         if metric == "faf_by_key":
             plot_options["color"] = experiment_colors[experiment_id]
+        elif metric == "distributed_lock_attempts":
+            lock_colors = {
+                "distributed_lock_successful": "tab:green",
+                "distributed_lock_failed": "tab:red",
+            }
+            plot_options["color"] = lock_colors[lock_metric]
 
         axis.plot(
             group["relative_time_seconds"],
