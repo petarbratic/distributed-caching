@@ -441,6 +441,7 @@ def plot_metric(
     ]
 
     experiment_colors: dict[str, str] = {}
+    labeled_faf_experiments: set[str] = set()
     if metric == "faf_by_key":
         color_cycle = plt.rcParams["axes.prop_cycle"].by_key()["color"]
         experiment_ids = sorted(
@@ -472,11 +473,17 @@ def plot_metric(
             .mean()
         )
 
-        label = build_line_label(
-            display_name=str(display_name),
-            series=str(series),
-            has_multiple_series=has_multiple_series,
-        )
+        if metric == "faf_by_key":
+            label = "_nolegend_"
+            if experiment_id not in labeled_faf_experiments:
+                label = str(display_name)
+                labeled_faf_experiments.add(experiment_id)
+        else:
+            label = build_line_label(
+                display_name=str(display_name),
+                series=str(series),
+                has_multiple_series=has_multiple_series,
+            )
 
         plot_options = {
             "linewidth": 1.6,
