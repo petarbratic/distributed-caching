@@ -25,7 +25,7 @@ type Handler struct {
 	Active int64
 
 	loadSignalsMu    sync.RWMutex
-	requestDurations []time.Duration
+	requestDurations []latencySample
 }
 
 func (handler *Handler) Get(writer http.ResponseWriter, req *http.Request) {

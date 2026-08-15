@@ -10,7 +10,12 @@ import (
 	"time"
 )
 
-const loadSignalWindowSize = 200
+const loadSignalWindowDuration = 15 * time.Second
+
+type latencySample struct {
+	RecordedAt time.Time
+	Duration   time.Duration
+}
 
 type LoadSignals struct {
 	P99LatencyMs          float64 `json:"p99LatencyMs"`
@@ -20,37 +25,92 @@ type LoadSignals struct {
 	SampleCount           int     `json:"sampleCount"`
 }
 
-func (h *Handler) recordRequestDuration(duration time.Duration) {
+func (h *Handler) recordRequestDuration(
+	duration time.Duration,
+) {
+	now := time.Now()
+
 	h.loadSignalsMu.Lock()
 	defer h.loadSignalsMu.Unlock()
 
-	if len(h.requestDurations) >= loadSignalWindowSize {
-		copy(h.requestDurations, h.requestDurations[1:])
-		h.requestDurations[loadSignalWindowSize-1] = duration
+	h.requestDurations = append(
+		h.requestDurations,
+		latencySample{
+			RecordedAt: now,
+			Duration:   duration,
+		},
+	)
+
+	h.removeExpiredLatencySamplesLocked(now)
+}
+
+func (h *Handler) removeExpiredLatencySamplesLocked(now time.Time) {
+	cutoff := now.Add(-loadSignalWindowDuration)
+
+	firstRecentIndex := sort.Search(
+		len(h.requestDurations),
+		func(index int) bool {
+			return !h.requestDurations[index].RecordedAt.Before(cutoff)
+		},
+	)
+
+	if firstRecentIndex == 0 {
 		return
 	}
 
-	h.requestDurations = append(h.requestDurations, duration)
+	if firstRecentIndex >= len(h.requestDurations) {
+		h.requestDurations = nil
+		return
+	}
+
+	recentSamples := append(
+		[]latencySample(nil),
+		h.requestDurations[firstRecentIndex:]...,
+	)
+
+	h.requestDurations = recentSamples
 }
 
-func (h *Handler) calculateP99LatencyMs() float64 {
-	h.loadSignalsMu.RLock()
+func (h *Handler) recentRequestDurations(now time.Time) []time.Duration {
+	h.loadSignalsMu.Lock()
+	defer h.loadSignalsMu.Unlock()
+
+	h.removeExpiredLatencySamplesLocked(now)
 
 	durations := make([]time.Duration, len(h.requestDurations))
 
-	copy(durations, h.requestDurations)
+	for index, sample := range h.requestDurations {
+		durations[index] = sample.Duration
+	}
 
-	h.loadSignalsMu.RUnlock()
+	return durations
+}
 
+func calculateP99LatencyMs(durations []time.Duration) float64 {
 	if len(durations) == 0 {
 		return 0
 	}
 
-	sort.Slice(durations, func(i, j int) bool { return durations[i] < durations[j] })
+	sortedDurations := append(
+		[]time.Duration(nil),
+		durations...,
+	)
 
-	index := int(math.Ceil(0.99*float64(len(durations)))) - 1
+	sort.Slice(
+		sortedDurations,
+		func(first int, second int) bool {
+			return sortedDurations[first] <
+				sortedDurations[second]
+		},
+	)
 
-	return float64(durations[index]) / float64(time.Millisecond)
+	index := int(math.Ceil(0.99*float64(len(sortedDurations)))) - 1
+
+	if index < 0 {
+		index = 0
+	}
+
+	return float64(sortedDurations[index]) / float64(time.Millisecond)
 }
 
 func (h *Handler) GetLoadSignals(w http.ResponseWriter, req *http.Request) {
@@ -64,19 +124,21 @@ func (h *Handler) GetLoadSignals(w http.ResponseWriter, req *http.Request) {
 	utilization := 0.0
 
 	if maxConcurrentRequests > 0 {
-		utilization = float64(activeRequests) / float64(maxConcurrentRequests)
+		utilization =
+			float64(activeRequests) /
+				float64(maxConcurrentRequests)
 	}
 
-	h.loadSignalsMu.RLock()
-	sampleCount := len(h.requestDurations)
-	h.loadSignalsMu.RUnlock()
+	durations := h.recentRequestDurations(time.Now())
 
 	signals := LoadSignals{
-		P99LatencyMs:          h.calculateP99LatencyMs(),
+		P99LatencyMs: calculateP99LatencyMs(
+			durations,
+		),
 		ActiveRequests:        activeRequests,
 		MaxConcurrentRequests: maxConcurrentRequests,
 		Utilization:           utilization,
-		SampleCount:           sampleCount,
+		SampleCount:           len(durations),
 	}
 
 	w.Header().Set("Content-Type", "application/json")

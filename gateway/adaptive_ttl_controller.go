@@ -21,11 +21,11 @@ const (
 	adaptiveTTLCongestedReadingsRequired = 2
 	adaptiveTTLStableReadingsRequired    = 3
 
-	adaptiveTTLStableThresholdRatio = 0.8
+	adaptiveTTLStableThresholdRatio = 0.9
 
-	adaptiveTTLIncreaseStep       = 0.25
-	adaptiveTTLStrongIncreaseStep = 0.5
-	adaptiveTTLDecreaseStep       = 0.1
+	adaptiveTTLIncreaseStep       = 0.15
+	adaptiveTTLStrongIncreaseStep = 0.25
+	adaptiveTTLDecreaseStep       = 0.2
 
 	adaptiveTTLFallbackInterval = 5 * time.Second
 
@@ -285,15 +285,22 @@ func classifyBackendLoad(config GatewayConfig, signals BackendLoadSignals) (Adap
 		return AdaptiveTTLStateCongested, latencyCongested, concurrencyCongested
 	}
 
-	if !enoughLatencySamples {
-		return AdaptiveTTLStateWarning, false, false
-	}
-
 	stableLatencyThreshold := float64(config.AdaptiveTTLLatencyThresholdMs) * adaptiveTTLStableThresholdRatio
 
 	stableConcurrencyThreshold := float64(config.AdaptiveTTLConcurrencyThreshold) * adaptiveTTLStableThresholdRatio
 
-	if signals.P99LatencyMs < stableLatencyThreshold && float64(signals.ActiveRequests) < stableConcurrencyThreshold {
+	concurrencyStable := float64(signals.ActiveRequests) < stableConcurrencyThreshold
+
+	if !enoughLatencySamples {
+		if concurrencyStable {
+			return AdaptiveTTLStateStable, false, false
+		}
+		return AdaptiveTTLStateWarning, false, false
+	}
+
+	latencyStable := signals.P99LatencyMs < stableLatencyThreshold
+
+	if latencyStable && concurrencyStable {
 		return AdaptiveTTLStateStable, false, false
 	}
 
