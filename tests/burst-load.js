@@ -5,16 +5,16 @@ const baseURL = 'http://localhost:8080';
 
 const firstKey = 1;
 const keyCount = 100;
-const skew = 1.2;
+const skew = 0.8;
 
 const baselineRequestRate = 20;
-const burstRequestRate = 300;
+const burstRequestRate = 180;
 
 const baselineDuration = '30s';
 const rampUpDuration = '1s';
-const burstDuration = '15s';
+const burstDuration = '45s';
 const rampDownDuration = '1s';
-const recoveryDuration = '30s';
+const recoveryDuration = '45s';
 
 const cumulativeProbabilities = createZipfDistribution(
   keyCount,
