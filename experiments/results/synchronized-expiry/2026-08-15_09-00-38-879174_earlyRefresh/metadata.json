@@ -1,12 +1,12 @@
 {
-  "experiment_id": "2026-08-14_12-43-12-721406_earlyRefresh",
+  "experiment_id": "2026-08-15_09-00-38-879174_earlyRefresh",
   "name": "earlyRefresh",
   "test_name": "synchronized-expiry",
   "test_file": "tests\\synchronized-expiry.js",
   "status": "completed",
-  "started_at": "2026-08-14T12:43:12.721406Z",
-  "ended_at": "2026-08-14T12:44:13.646344Z",
-  "duration_seconds": 60.924938,
+  "started_at": "2026-08-15T09:00:38.879174Z",
+  "ended_at": "2026-08-15T09:01:39.700462Z",
+  "duration_seconds": 60.821288,
   "k6_arguments": [],
   "k6_exit_code": 0,
   "prometheus": {
