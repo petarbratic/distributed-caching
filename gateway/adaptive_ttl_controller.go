@@ -74,6 +74,8 @@ type AdaptiveTTLSnapshot struct {
 	ConsecutiveStableReadings int `json:"consecutiveStableReadings"`
 
 	ConsecutiveCongestedReadings int `json:"consecutiveCongestedReadings"`
+
+	LastBackendP99LatencyMs float64 `json:"lastBackendP99LatencyMs"`
 }
 
 type GatewayConfigProvider func(context.Context) (GatewayConfig, error)
@@ -90,6 +92,7 @@ type AdaptiveTTLController struct {
 
 	consecutiveStableReadings    int
 	consecutiveCongestedReadings int
+	lastBackendP99LatencyMs      float64
 }
 
 func NewAdaptiveTTLController(backendURL string, redisClient *redis.Client) (*AdaptiveTTLController, error) {
@@ -122,6 +125,8 @@ func (controller *AdaptiveTTLController) Snapshot() AdaptiveTTLSnapshot {
 		ConsecutiveStableReadings: controller.consecutiveStableReadings,
 
 		ConsecutiveCongestedReadings: controller.consecutiveCongestedReadings,
+
+		LastBackendP99LatencyMs: controller.lastBackendP99LatencyMs,
 	}
 }
 
@@ -147,6 +152,8 @@ func (controller *AdaptiveTTLController) Run(ctx context.Context, configProvider
 
 		if err := controller.updateSharedState(ctx, config); err != nil {
 			log.Printf("Adaptive TTL update failed: %v", err)
+		} else {
+			controller.updateMetrics(config)
 		}
 
 		if !waitForAdaptiveTTLInterval(ctx, interval) {
@@ -185,6 +192,8 @@ func (controller *AdaptiveTTLController) processSignals(config GatewayConfig, si
 	state, latencyCongested, concurrencyCongested := classifyBackendLoad(config, signals)
 
 	controller.mu.Lock()
+
+	controller.lastBackendP99LatencyMs = signals.P99LatencyMs
 
 	previousState := controller.currentState
 	previousFactor := controller.currentFactor
@@ -301,6 +310,7 @@ func (controller *AdaptiveTTLController) setDisabled() {
 	controller.currentFactor = adaptiveTTLInitialFactor
 	controller.consecutiveStableReadings = 0
 	controller.consecutiveCongestedReadings = 0
+	controller.lastBackendP99LatencyMs = 0
 
 	controller.mu.Unlock()
 
@@ -500,6 +510,8 @@ func (controller *AdaptiveTTLController) applySnapshot(snapshot AdaptiveTTLSnaps
 	controller.consecutiveStableReadings = snapshot.ConsecutiveStableReadings
 
 	controller.consecutiveCongestedReadings = snapshot.ConsecutiveCongestedReadings
+
+	controller.lastBackendP99LatencyMs = snapshot.LastBackendP99LatencyMs
 }
 
 func (controller *AdaptiveTTLController) effectiveCacheTTLs(config GatewayConfig) (time.Duration, time.Duration, float64) {
@@ -544,6 +556,7 @@ func (controller *AdaptiveTTLController) Reset(ctx context.Context, enabled bool
 
 				ConsecutiveStableReadings:    0,
 				ConsecutiveCongestedReadings: 0,
+				LastBackendP99LatencyMs:      0,
 			}
 
 			if err := controller.saveSharedSnapshot(ctx, snapshot); err != nil {
@@ -564,4 +577,40 @@ func (controller *AdaptiveTTLController) Reset(ctx context.Context, enabled bool
 			return ctx.Err()
 		}
 	}
+}
+func adaptiveTTLStateMetricValue(state AdaptiveTTLState) float64 {
+	switch state {
+	case AdaptiveTTLStateStable:
+		return 1
+	case AdaptiveTTLStateWarning:
+		return 2
+	case AdaptiveTTLStateCongested:
+		return 3
+	case AdaptiveTTLStateDisabled:
+		fallthrough
+	default:
+		return 0
+	}
+}
+
+func (controller *AdaptiveTTLController) updateMetrics(config GatewayConfig) {
+	snapshot := controller.Snapshot()
+
+	ttlL1, ttlL2, factor := controller.effectiveCacheTTLs(config)
+
+	state := snapshot.State
+
+	if !config.AdaptiveTTLEnabled {
+		state = AdaptiveTTLStateDisabled
+	}
+
+	adaptiveTTLFactor.Set(factor)
+
+	adaptiveTTLEffectiveSeconds.WithLabelValues("l1").Set(ttlL1.Seconds())
+
+	adaptiveTTLEffectiveSeconds.WithLabelValues("l2").Set(ttlL2.Seconds())
+
+	adaptiveTTLState.Set(adaptiveTTLStateMetricValue(state))
+
+	adaptiveTTLBackendP99Milliseconds.Set(snapshot.LastBackendP99LatencyMs)
 }

@@ -14,6 +14,10 @@ func registerMetrics() {
 	prometheus.MustRegister(distributedLockAttempts)
 	prometheus.MustRegister(backendCallsByKey)
 	prometheus.MustRegister(logicalRefreshesByKey)
+	prometheus.MustRegister(adaptiveTTLFactor)
+	prometheus.MustRegister(adaptiveTTLEffectiveSeconds)
+	prometheus.MustRegister(adaptiveTTLState)
+	prometheus.MustRegister(adaptiveTTLBackendP99Milliseconds)
 }
 
 var totalUserRequests = prometheus.NewCounter(
@@ -136,5 +140,34 @@ var backendDuration = prometheus.NewHistogram(
 			3,
 			5,
 		},
+	},
+)
+
+var adaptiveTTLFactor = prometheus.NewGauge(
+	prometheus.GaugeOpts{
+		Name: "gateway_adaptive_ttl_factor",
+		Help: "Current global adaptive TTL scaling factor.",
+	},
+)
+
+var adaptiveTTLEffectiveSeconds = prometheus.NewGaugeVec(
+	prometheus.GaugeOpts{
+		Name: "gateway_adaptive_ttl_effective_seconds",
+		Help: "Current effective cache TTL in seconds by cache level.",
+	},
+	[]string{"level"},
+)
+
+var adaptiveTTLState = prometheus.NewGauge(
+	prometheus.GaugeOpts{
+		Name: "gateway_adaptive_ttl_state",
+		Help: "Current adaptive TTL controller state: 0=disabled, 1=stable, 2=warning, 3=congested.",
+	},
+)
+
+var adaptiveTTLBackendP99Milliseconds = prometheus.NewGauge(
+	prometheus.GaugeOpts{
+		Name: "gateway_adaptive_ttl_backend_p99_milliseconds",
+		Help: "Latest backend P99 latency observed by the adaptive TTL controller in milliseconds.",
 	},
 )

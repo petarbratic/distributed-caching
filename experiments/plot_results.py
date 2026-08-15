@@ -58,6 +58,13 @@ METRIC_TITLES = {
     "cache_hit_ratio_l2": "L2 CHR",
     "request_duration_p95": "P95 трајање захтева",
     "request_duration_p99": "P99 трајање захтева",
+    
+    "adaptive_ttl_factor": "Adaptive TTL фактор k",
+    "adaptive_ttl_effective_seconds": "Ефективни TTL",
+    "adaptive_ttl_state": "Стање Adaptive TTL контролера",
+    "adaptive_ttl_backend_p99_milliseconds": (
+        "Backend P99 сигнал Adaptive TTL контролера"
+    ),
 }
 
 METRIC_UNITS = {
@@ -82,6 +89,10 @@ METRIC_UNITS = {
     "cache_hit_ratio_l2": "Однос",
     "request_duration_p95": "Секунде",
     "request_duration_p99": "Секунде",
+    "adaptive_ttl_factor": "Фактор",
+    "adaptive_ttl_effective_seconds": "Секунде",
+    "adaptive_ttl_state": "Стање",
+    "adaptive_ttl_backend_p99_milliseconds": "Милисекунде",
 }
 
 # Order in which metrics appear in the image.
@@ -105,6 +116,10 @@ METRIC_ORDER = [
     "cache_hit_ratio_l2",
     "request_duration_p95",
     "request_duration_p99",
+    "adaptive_ttl_backend_p99_milliseconds",
+    "adaptive_ttl_state",
+    "adaptive_ttl_factor",
+    "adaptive_ttl_effective_seconds",
 ]
 
 
@@ -385,6 +400,13 @@ def metric_title(metric: str) -> str:
 def metric_unit(metric: str) -> str:
     return METRIC_UNITS.get(metric, "Вредност")
 
+def format_series_name(series: str) -> str:
+    series_names = {
+        "level=l1": "L1",
+        "level=l2": "L2",
+    }
+
+    return series_names.get(series, series)
 
 def build_line_label(
     display_name: str,
@@ -397,7 +419,9 @@ def build_line_label(
     if series == "all":
         return display_name
 
-    return f"{display_name} — {series}"
+    formatted_series = format_series_name(series)
+
+    return f"{display_name} — {formatted_series}"
 
 
 def configure_axis(
@@ -425,6 +449,17 @@ def configure_axis(
 
     formatter = ScalarFormatter(useMathText=True)
     formatter.set_powerlimits((-3, 4))
+    if metric == "adaptive_ttl_state":
+        axis.set_ylim(-0.15, 3.15)
+        axis.set_yticks([0, 1, 2, 3])
+        axis.set_yticklabels(
+            [
+                "Disabled",
+                "Stable",
+                "Warning",
+                "Congested",
+            ]
+        )
     axis.yaxis.set_major_formatter(formatter)
 
 
@@ -526,6 +561,15 @@ def plot_metric(
             "linewidth": 1.6,
             "label": label,
         }
+        
+        step_metrics = {
+            "adaptive_ttl_state",
+            "adaptive_ttl_factor",
+            "adaptive_ttl_effective_seconds",
+        }
+
+        if metric in step_metrics:
+            plot_options["drawstyle"] = "steps-post"
 
         if metric == "faf_by_key":
             plot_options["color"] = experiment_colors[experiment_id]

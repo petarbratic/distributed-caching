@@ -302,6 +302,37 @@ PROMETHEUS_QUERIES = {
           )
         )
     """,
+     "adaptive_ttl_factor": """
+        avg(
+          gateway_adaptive_ttl_factor{
+            job="gateway"
+          }
+        )
+    """,
+
+    "adaptive_ttl_effective_seconds": """
+        avg by (level) (
+          gateway_adaptive_ttl_effective_seconds{
+            job="gateway"
+          }
+        )
+    """,
+
+    "adaptive_ttl_state": """
+        avg(
+          gateway_adaptive_ttl_state{
+            job="gateway"
+          }
+        )
+    """,
+
+    "adaptive_ttl_backend_p99_milliseconds": """
+        avg(
+          gateway_adaptive_ttl_backend_p99_milliseconds{
+            job="gateway"
+          }
+        )
+    """,
 }
 
 
