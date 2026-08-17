@@ -4,6 +4,8 @@ An experimental platform for evaluating distributed caching strategies under hig
 
 The platform is designed to compare the effects of different anti-stampede mechanisms on cache hit ratio, backend load amplification, response latency, and backend stability.
 
+The repository includes the source code, load-generation scripts, monitoring configuration, collected experiment results, and generated comparison charts.
+
 ## Content
 
 - [System Overview](#system-overview)
@@ -102,7 +104,7 @@ distributed-caching/
 ├── experiments/
 │   ├── run_experiment.py     # Runs k6 and exports Prometheus metrics
 │   ├── plot_results.py       # Generates comparison charts
-│   └── results/              # Experiment outputs
+│   └── results/              # Collected experiment results and comparison charts
 ├── monitoring/
 │   ├── prometheus.yml        # Prometheus configuration
 │   ├── dashboard-*.json      # Grafana dashboard
@@ -395,6 +397,20 @@ python run_experiment.py --name baseline --test tests/burst-load.js
 ```
 
 ## Experiment Results
+
+The repository already contains the collected results for all evaluated load scenarios and caching strategies. The results can be found in the `experiments/results` directory, organized by load scenario and experiment run.
+
+The included results cover:
+
+- moderate-skew Zipf load;
+- high-skew Zipf load;
+- synchronized-expiry load;
+- burst load;
+- baseline behavior;
+- SingleFlight;
+- distributed locking;
+- probabilistic early refresh;
+- adaptive TTL evaluation for the burst-load scenario.
 
 Experiment data is written to:
 
