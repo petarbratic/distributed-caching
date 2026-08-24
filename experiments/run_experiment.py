@@ -123,21 +123,35 @@ PROMETHEUS_QUERIES = {
     """,
 
     "faf_by_key": """
+        (
         sum by (key) (
-          gateway_backend_calls_total{
-            job="gateway",
-            key=~"/api/backend/(1|2|3|4|5|6)"
-          }
+            increase(
+            gateway_backend_calls_total{
+                job="gateway",
+                key=~"/api/backend/(1|2|3|4|5|6)"
+            }[$__rate_interval]
+            )
         )
         /
-        clamp_min(
-          sum by (key) (
+        sum by (key) (
+            increase(
             gateway_logical_refreshes_total{
-              job="gateway",
-              key=~"/api/backend/(1|2|3|4|5|6)"
-            }
-          ),
-          1
+                job="gateway",
+                key=~"/api/backend/(1|2|3|4|5|6)"
+            }[$__rate_interval]
+            )
+        )
+        )
+        and on (key)
+        (
+        sum by (key) (
+            increase(
+            gateway_logical_refreshes_total{
+                job="gateway",
+                key=~"/api/backend/(1|2|3|4|5|6)"
+            }[$__rate_interval]
+            )
+        ) > 0
         )
     """,
 

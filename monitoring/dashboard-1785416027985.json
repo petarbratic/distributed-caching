@@ -5,8 +5,8 @@
     "name": "adb6qc8",
     "namespace": "default",
     "uid": "cce35573-8746-4327-956b-b15a1b7e2db6",
-    "resourceVersion": "1786799925660990",
-    "generation": 7,
+    "resourceVersion": "1787570952285017",
+    "generation": 12,
     "creationTimestamp": "2026-08-13T09:06:23Z",
     "labels": {
       "grafana.app/deprecatedInternalID": "2661471025987584"
@@ -18,11 +18,11 @@
       "grafana.app/managerAllowsEdits": "true",
       "grafana.app/managerId": "Distributed caching",
       "grafana.app/saved-from-ui": "Grafana v13.1.1 (a9cee6e172)",
-      "grafana.app/sourceChecksum": "f0cdd8891037b1dbd559d10fa6b1960e",
+      "grafana.app/sourceChecksum": "fe3039b6b430e8e7211549cadf7c10d4",
       "grafana.app/sourcePath": "/var/lib/grafana/dashboards/distributed-caching.json",
-      "grafana.app/sourceTimestamp": "1786611434000",
+      "grafana.app/sourceTimestamp": "1786799945000",
       "grafana.app/updatedBy": "user:bfv1la9jmslxce",
-      "grafana.app/updatedTimestamp": "2026-08-15T13:18:45Z"
+      "grafana.app/updatedTimestamp": "2026-08-24T11:29:12Z"
     }
   },
   "spec": {
@@ -920,7 +920,7 @@
                       },
                       "spec": {
                         "editorMode": "code",
-                        "expr": "sum by (key) (\r\n  gateway_backend_calls_total{\r\n    job=\"gateway\",\r\n    key=~\"/api/backend/(1|2|3|4|5|6)\"\r\n  }\r\n)\r\n/\r\nclamp_min(\r\n  sum by (key) (\r\n    gateway_logical_refreshes_total{\r\n      job=\"gateway\",\r\n      key=~\"/api/backend/(1|2|3|4|5|6)\"\r\n    }\r\n  ),\r\n  1\r\n)",
+                        "expr": "(\r\n  sum by (key) (\r\n    increase(\r\n      gateway_backend_calls_total{\r\n        job=\"gateway\",\r\n        key=~\"/api/backend/(1|2|3|4|5|6)\"\r\n      }[$__rate_interval]\r\n    )\r\n  )\r\n  /\r\n  sum by (key) (\r\n    increase(\r\n      gateway_logical_refreshes_total{\r\n        job=\"gateway\",\r\n        key=~\"/api/backend/(1|2|3|4|5|6)\"\r\n      }[$__rate_interval]\r\n    )\r\n  )\r\n)\r\nand on (key)\r\n(\r\n  sum by (key) (\r\n    increase(\r\n      gateway_logical_refreshes_total{\r\n        job=\"gateway\",\r\n        key=~\"/api/backend/(1|2|3|4|5|6)\"\r\n      }[$__rate_interval]\r\n    )\r\n  ) > 0\r\n)",
                         "interval": "1s",
                         "legendFormat": "{{key}}",
                         "range": true
