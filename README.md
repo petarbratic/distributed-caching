@@ -218,7 +218,7 @@ The cache and backend parameters remain the same when comparing strategies withi
 
 The following configuration is used for both Zipf scenarios:
 
-- `tests/zipf1.js`, with a Zipf skew of `0.8`;
+- `tests/moderate-skew-zipf.js`, with a Zipf skew of `0.8`;
 - `tests/high-skew-zipf.js`, with a Zipf skew of `1.2`.
 
 | Parameter | Value |
@@ -293,14 +293,14 @@ The repository contains the following k6 scenarios:
 
 | Test file | Scenario |
 | --- | --- |
-| `tests/zipf1.js` | Moderate Zipf distribution |
+| `tests/moderate-skew-zipf.js` | Moderate Zipf distribution |
 | `tests/high-skew-zipf.js` | High-skew Zipf distribution with stronger hot-key behavior |
 | `tests/synchronized-expiry.js` | Simultaneous expiration of several popular keys |
 | `tests/burst-load.js` | Sudden traffic increase followed by a recovery period |
 
 ### Moderate Zipf load
 
-`tests/zipf1.js` uses:
+`tests/moderate-skew-zipf.js` uses:
 
 - 100 keys;
 - Zipf skew: `0.8`;
@@ -361,7 +361,7 @@ cd experiments
 Run an experiment with:
 
 ```powershell
-python run_experiment.py --name baseline --test tests/zipf1.js
+python run_experiment.py --name baseline --test tests/moderate-skew-zipf.js
 ```
 
 Although the command is executed from the `experiments` directory, test paths are resolved relative to the repository root.
@@ -379,13 +379,13 @@ adaptiveTTL
 For example, after enabling SingleFlight in the frontend:
 
 ```powershell
-python run_experiment.py --name singleFlight --test tests/zipf1.js
+python run_experiment.py --name singleFlight --test tests/moderate-skew-zipf.js
 ```
 
 After enabling distributed locking:
 
 ```powershell
-python run_experiment.py --name distributedLock --test tests/zipf1.js
+python run_experiment.py --name distributedLock --test tests/moderate-skew-zipf.js
 ```
 
 To run another traffic scenario, change the `--test` argument:
