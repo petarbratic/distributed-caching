@@ -55,6 +55,7 @@ func main() {
 	r.Handle("/metrics", promhttp.Handler())
 	r.HandleFunc("/config", backendHandler.GetConfig).Methods("GET")
 	r.HandleFunc("/config", backendHandler.UpdateConfig).Methods("PUT")
+	r.HandleFunc("/fault", backendHandler.ActivateFault).Methods("POST")
 	r.HandleFunc("/{id}", backendHandler.Get).Methods("GET")
 
 	if err := http.ListenAndServe(

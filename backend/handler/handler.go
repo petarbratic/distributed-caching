@@ -22,7 +22,8 @@ type Handler struct {
 
 	configMu sync.RWMutex
 
-	Active int64
+	Active      int64
+	Unavailable atomic.Bool
 
 	loadSignalsMu    sync.RWMutex
 	requestDurations []latencySample
@@ -32,6 +33,15 @@ func (handler *Handler) Get(writer http.ResponseWriter, req *http.Request) {
 	requestStartedAt := time.Now()
 
 	totalBackendRequests.Inc()
+
+	if handler.Unavailable.Load() {
+		http.Error(
+			writer,
+			"Backend temporarily unavailable",
+			http.StatusServiceUnavailable,
+		)
+		return
+	}
 
 	atomic.AddInt64(&handler.Active, 1)
 	backendActiveRequests.Inc()
