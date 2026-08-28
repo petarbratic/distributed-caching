@@ -1,218 +1,79 @@
-<h1>Distributed caching</h1>
-<input [(ngModel)]="id" placeholder="Type ID" />
-<button (click)="load()">Call API</button>
+<header class="app-header">
+    <div class="header-inner">
+        <div>
+            <p class="eyebrow">Experimental platform</p>
+            <h1>Distributed caching</h1>
+            <p class="header-description">Configure cache behaviour, backend load and stampede protection strategies.</p>
+        </div>
+        <div class="request-tool" aria-label="Backend request tool">
+            <label for="entityId">Test entity ID</label>
+            <div class="request-controls">
+                <input id="entityId" [(ngModel)]="id" placeholder="Type ID" />
+                <button class="secondary-button" type="button" (click)="load()">Call API</button>
+            </div>
+        </div>
+    </div>
+</header>
 
 <main class="container">
-    <h1>System Configuration</h1>
-
-    <p>
-        Changing the configuration will clear all existing data from L1 and L2 caches.
-    </p>
+    <div class="page-heading">
+        <div><p class="eyebrow">Runtime settings</p><h2>System configuration</h2></div>
+        <p class="configuration-note">Changing the configuration clears all existing data from the L1 and L2 caches.</p>
+    </div>
 
     <form #cacheForm="ngForm" (ngSubmit)="saveCacheConfig()">
-        <div class="form-group">
-            <label for="l1MaxEntries">
-                Maximum number of elements in L1 cache
-            </label>
+        <div class="configuration-grid">
+            <section class="panel">
+                <div class="panel-heading"><span class="section-number">01</span><div><h3>Cache layers</h3><p>Capacity and expiration settings for local and shared caches.</p></div></div>
+                <div class="field-grid">
+                    <div class="form-group"><label for="l1MaxEntries">L1 maximum entries</label><input id="l1MaxEntries" name="l1MaxEntries" type="number" min="1" required [(ngModel)]="cacheConfig.l1MaxEntries" /></div>
+                    <div class="form-group"><label for="l2MaxEntries">L2 maximum entries</label><input id="l2MaxEntries" name="l2MaxEntries" type="number" min="1" required [(ngModel)]="cacheConfig.l2MaxEntries" /></div>
+                    <div class="form-group"><label for="l1TTLSeconds">L1 TTL <span>seconds</span></label><input id="l1TTLSeconds" name="l1TTLSeconds" type="number" min="1" required [(ngModel)]="cacheConfig.l1TTLSeconds" /></div>
+                    <div class="form-group"><label for="l2TTLSeconds">L2 TTL <span>seconds</span></label><input id="l2TTLSeconds" name="l2TTLSeconds" type="number" min="1" required [(ngModel)]="cacheConfig.l2TTLSeconds" /></div>
+                </div>
+            </section>
 
-            <input id="l1MaxEntries" name="l1MaxEntries" type="number" min="1" required
-                [(ngModel)]="cacheConfig.l1MaxEntries" />
+            <section class="panel">
+                <div class="panel-heading"><span class="section-number">02</span><div><h3>Backend conditions</h3><p>Simulated capacity, latency and timeout constraints.</p></div></div>
+                <div class="field-grid">
+                    <div class="form-group"><label for="semaphoreSize">Concurrent request limit</label><input id="semaphoreSize" name="semaphoreSize" type="number" min="1" required [(ngModel)]="cacheConfig.semaphoreSize" /></div>
+                    <div class="form-group"><label for="concurrentDelayMs">Concurrent delay <span>ms / request</span></label><input id="concurrentDelayMs" type="number" min="0" name="concurrentDelayMs" required [(ngModel)]="cacheConfig.concurrentDelayMs" /></div>
+                    <div class="form-group"><label for="baseLatencyMs">Base latency <span>ms</span></label><input id="baseLatencyMs" type="number" min="0" name="baseLatencyMs" required [(ngModel)]="cacheConfig.baseLatencyMs" /></div>
+                    <div class="form-group"><label for="backendTimeoutMs">Gateway timeout <span>ms</span></label><input id="backendTimeoutMs" name="backendTimeoutMs" type="number" min="1" required [(ngModel)]="cacheConfig.backendTimeoutMs" /></div>
+                </div>
+            </section>
+
+            <section class="panel">
+                <div class="panel-heading"><span class="section-number">03</span><div><h3>Protection strategies</h3><p>Enable request coordination and proactive cache refresh.</p></div></div>
+                <div class="strategy-list">
+                    <label class="switch-row" for="singleFlightEnabled"><span><strong>SingleFlight</strong><small>Coalesce identical requests on each gateway instance.</small></span><input id="singleFlightEnabled" name="singleFlightEnabled" type="checkbox" [(ngModel)]="cacheConfig.singleFlightEnabled" /></label>
+                    <label class="switch-row" for="distributedLockEnabled"><span><strong>Distributed lock</strong><small>Coordinate backend access across gateway instances.</small></span><input id="distributedLockEnabled" name="distributedLockEnabled" type="checkbox" [(ngModel)]="cacheConfig.distributedLockEnabled" /></label>
+                    <label class="switch-row" for="probabilisticEarlyRefreshEnabled"><span><strong>Probabilistic early refresh</strong><small>Refresh selected entries before their TTL expires.</small></span><input id="probabilisticEarlyRefreshEnabled" name="probabilisticEarlyRefreshEnabled" type="checkbox" [(ngModel)]="cacheConfig.probabilisticEarlyRefreshEnabled" /></label>
+                </div>
+                <div class="form-group compact-field"><label for="earlyRefreshBeta">Early refresh beta</label><input id="earlyRefreshBeta" name="earlyRefreshBeta" type="number" min="0.1" max="10" step="0.1" required [(ngModel)]="cacheConfig.earlyRefreshBeta" /></div>
+            </section>
+
+            <section class="panel">
+                <div class="panel-heading adaptive-heading">
+                    <span class="section-number">04</span><div><h3>Adaptive TTL controller</h3><p>Scale effective TTL values according to backend state.</p></div>
+                    <label class="enable-control" for="adaptiveTTLEnabled"><span>Enabled</span><input id="adaptiveTTLEnabled" name="adaptiveTTLEnabled" type="checkbox" [(ngModel)]="cacheConfig.adaptiveTTLEnabled" /></label>
+                </div>
+                <div class="field-grid adaptive-fields">
+                    <div class="form-group"><label for="adaptiveTTLMinFactor">Minimum factor</label><input id="adaptiveTTLMinFactor" name="adaptiveTTLMinFactor" type="number" min="0.1" max="1" step="0.05" required [(ngModel)]="cacheConfig.adaptiveTTLMinFactor" /></div>
+                    <div class="form-group"><label for="adaptiveTTLMaxFactor">Maximum factor</label><input id="adaptiveTTLMaxFactor" name="adaptiveTTLMaxFactor" type="number" min="1" step="0.1" required [(ngModel)]="cacheConfig.adaptiveTTLMaxFactor" /></div>
+                    <div class="form-group"><label for="adaptiveTTLLatencyThresholdMs">P99 latency threshold <span>ms</span></label><input id="adaptiveTTLLatencyThresholdMs" name="adaptiveTTLLatencyThresholdMs" type="number" min="1" required [(ngModel)]="cacheConfig.adaptiveTTLLatencyThresholdMs" /></div>
+                    <div class="form-group"><label for="adaptiveTTLConcurrencyThreshold">Concurrent requests threshold</label><input id="adaptiveTTLConcurrencyThreshold" name="adaptiveTTLConcurrencyThreshold" type="number" min="1" required [(ngModel)]="cacheConfig.adaptiveTTLConcurrencyThreshold" /></div>
+                    <div class="form-group full-width-field"><label for="adaptiveTTLAdjustmentIntervalMs">Adjustment interval <span>ms</span></label><input id="adaptiveTTLAdjustmentIntervalMs" name="adaptiveTTLAdjustmentIntervalMs" type="number" min="1" required [(ngModel)]="cacheConfig.adaptiveTTLAdjustmentIntervalMs" /></div>
+                </div>
+            </section>
         </div>
 
-        <div class="form-group">
-            <label for="l2MaxEntries">
-                Maximum number of elements in L2 cache
-            </label>
-
-            <input id="l2MaxEntries" name="l2MaxEntries" type="number" min="1" required
-                [(ngModel)]="cacheConfig.l2MaxEntries" />
+        <p class="validation-error" *ngIf="cacheConfig.l1MaxEntries > 0 && cacheConfig.l2MaxEntries > 0 && cacheConfig.l1MaxEntries > cacheConfig.l2MaxEntries">L1 size cannot be greater than L2 size.</p>
+        <div class="form-actions">
+            <p>Settings are applied to both gateway instances and the backend service.</p>
+            <button class="primary-button" type="submit" [disabled]="loading || cacheForm.invalid || cacheConfig.l1MaxEntries > cacheConfig.l2MaxEntries">{{ loading ? 'Saving...' : 'Save configuration' }}</button>
         </div>
-
-        <div class="form-group">
-            <label for="l1TTLSeconds">
-                L1 TTL in seconds
-            </label>
-
-            <input id="l1TTLSeconds" name="l1TTLSeconds" type="number" min="1" required
-                [(ngModel)]="cacheConfig.l1TTLSeconds" />
-        </div>
-
-        <div class="form-group">
-            <label for="l2TTLSeconds">
-                L2 TTL in seconds
-            </label>
-
-            <input id="l2TTLSeconds" name="l2TTLSeconds" type="number" min="1" required
-                [(ngModel)]="cacheConfig.l2TTLSeconds" />
-        </div>
-
-        <div class="form-group">
-            <label for="semaphoreSize">
-                Maximum number of concurrent backend requests
-            </label>
-
-            <input id="semaphoreSize" name="semaphoreSize" type="number" min="1" required
-                [(ngModel)]="cacheConfig.semaphoreSize" />
-        </div>
-
-        <div class="form-group">
-            <label for="concurrentDelayMs">
-                Delay per concurrent backend request in milliseconds
-            </label>
-
-            <input id="concurrentDelayMs" type="number" min="0" name="concurrentDelayMs" required
-                [(ngModel)]="cacheConfig.concurrentDelayMs" />
-        </div>
-
-        <div class="form-group">
-            <label for="baseLatencyMs">
-                Base backend latency in milliseconds
-            </label>
-
-            <input id="baseLatencyMs" type="number" min="0" name="baseLatencyMs" required
-                [(ngModel)]="cacheConfig.baseLatencyMs" />
-        </div>
-
-        <!-- SingleFlight Enabled -->
-        <div class="form-group checkbox-group">
-            <label for="singleFlightEnabled">
-                Enable SingleFlight (Request Coalescing)
-            </label>
-
-            <input id="singleFlightEnabled" name="singleFlightEnabled" type="checkbox"
-                [(ngModel)]="cacheConfig.singleFlightEnabled" />
-        </div>
-
-        <!-- Distributed Lock Enabled -->
-        <div class="form-group checkbox-group">
-            <label for="distributedLockEnabled">
-                Enable distributed lock
-            </label>
-
-            <input id="distributedLockEnabled" name="distributedLockEnabled" type="checkbox"
-                [(ngModel)]="cacheConfig.distributedLockEnabled" />
-        </div>
-
-        <!-- Probabilistic Early Refresh Enabled -->
-        <div class="form-group checkbox-group">
-            <label for="probabilisticEarlyRefreshEnabled">
-                Enable probabilistic early refresh
-            </label>
-
-            <input id="probabilisticEarlyRefreshEnabled" name="probabilisticEarlyRefreshEnabled" type="checkbox"
-                [(ngModel)]="
-            cacheConfig.probabilisticEarlyRefreshEnabled
-        " />
-        </div>
-
-        <!-- Early Refresh Beta -->
-        <div class="form-group">
-            <label for="earlyRefreshBeta">
-                Probabilistic early refresh beta
-            </label>
-
-            <input id="earlyRefreshBeta" name="earlyRefreshBeta" type="number" min="0.1" max="10" step="0.1" required
-                [(ngModel)]="cacheConfig.earlyRefreshBeta" />
-        </div>
-
-        <!-- Backend Timeout (ms) -->
-        <div class="form-group">
-            <label for="backendTimeoutMs">
-                Backend timeout in milliseconds
-            </label>
-
-            <input id="backendTimeoutMs" name="backendTimeoutMs" type="number" min="1" required
-                [(ngModel)]="cacheConfig.backendTimeoutMs" />
-        </div>
-
-        <!-- Adaptive TTL Enabled -->
-        <div class="form-group checkbox-group">
-            <label for="adaptiveTTLEnabled">
-                Enable adaptive TTL
-            </label>
-
-            <input id="adaptiveTTLEnabled" name="adaptiveTTLEnabled" type="checkbox"
-                [(ngModel)]="cacheConfig.adaptiveTTLEnabled" />
-        </div>
-
-        <!-- Adaptive TTL Minimum Factor -->
-        <div class="form-group">
-            <label for="adaptiveTTLMinFactor">
-                Adaptive TTL minimum factor
-            </label>
-
-            <input id="adaptiveTTLMinFactor" name="adaptiveTTLMinFactor" type="number" min="0.1" max="1" step="0.05" required
-                [(ngModel)]="cacheConfig.adaptiveTTLMinFactor" />
-        </div>
-
-        <!-- Adaptive TTL Maximum Factor -->
-        <div class="form-group">
-            <label for="adaptiveTTLMaxFactor">
-                Adaptive TTL maximum factor
-            </label>
-
-            <input id="adaptiveTTLMaxFactor" name="adaptiveTTLMaxFactor" type="number" min="1" step="0.1" required
-                [(ngModel)]="cacheConfig.adaptiveTTLMaxFactor" />
-        </div>
-
-        <!-- Adaptive TTL Latency Threshold -->
-        <div class="form-group">
-            <label for="adaptiveTTLLatencyThresholdMs">
-                Adaptive TTL p99 latency threshold in milliseconds
-            </label>
-
-            <input id="adaptiveTTLLatencyThresholdMs" name="adaptiveTTLLatencyThresholdMs" type="number" min="1"
-                required [(ngModel)]="
-                    cacheConfig.adaptiveTTLLatencyThresholdMs
-                " />
-        </div>
-
-        <!-- Adaptive TTL Concurrency Threshold -->
-        <div class="form-group">
-            <label for="adaptiveTTLConcurrencyThreshold">
-                Adaptive TTL concurrent requests threshold
-            </label>
-
-            <input id="adaptiveTTLConcurrencyThreshold" name="adaptiveTTLConcurrencyThreshold" type="number" min="1"
-                required [(ngModel)]="
-                    cacheConfig.adaptiveTTLConcurrencyThreshold
-                " />
-        </div>
-
-        <!-- Adaptive TTL Adjustment Interval -->
-        <div class="form-group">
-            <label for="adaptiveTTLAdjustmentIntervalMs">
-                Adaptive TTL adjustment interval in milliseconds
-            </label>
-
-            <input id="adaptiveTTLAdjustmentIntervalMs" name="adaptiveTTLAdjustmentIntervalMs" type="number" min="1"
-                required [(ngModel)]="
-                    cacheConfig.adaptiveTTLAdjustmentIntervalMs
-                " />
-        </div>
-
-        <p class="validation-error" *ngIf="
-        cacheConfig.l1MaxEntries > 0 &&
-        cacheConfig.l2MaxEntries > 0 &&
-        cacheConfig.l1MaxEntries > cacheConfig.l2MaxEntries
-      ">
-            L1 size cannot be greater than L2 size.
-        </p>
-
-        <button type="submit" [disabled]="
-        loading ||
-        cacheForm.invalid ||
-        cacheConfig.l1MaxEntries > cacheConfig.l2MaxEntries
-      ">
-            {{ loading ? 'Saving...' : 'Save configuration' }}
-        </button>
     </form>
-
-    <p class="success-message" *ngIf="successMessage">
-        {{ successMessage }}
-    </p>
-
-    <p class="error-message" *ngIf="errorMessage">
-        {{ errorMessage }}
-    </p>
+    <p class="status-message success-message" *ngIf="successMessage">{{ successMessage }}</p>
+    <p class="status-message error-message" *ngIf="errorMessage">{{ errorMessage }}</p>
 </main>
