@@ -34,13 +34,6 @@ var totalFailedRequests = prometheus.NewCounter(
 	},
 )
 
-var activeRequests = prometheus.NewGauge(
-	prometheus.GaugeOpts{
-		Name: "backend_active_requests",
-		Help: "Current number of active backend requests",
-	},
-)
-
 var totalL1Hits = prometheus.NewCounter(
 	prometheus.CounterOpts{
 		Name: "gateway_l1_hits_total",
