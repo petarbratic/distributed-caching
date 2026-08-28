@@ -6,7 +6,6 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
-	"log"
 	"net/http"
 	"time"
 
@@ -95,25 +94,16 @@ func (h *Handler) releaseDistributedLock(
 	).Int64()
 
 	if err != nil {
-		log.Printf("Distributed lock release failed for key %s: %v",
-			cacheKey,
-			err,
-		)
+		//log.Printf("Distributed lock release failed for key %s: %v", cacheKey, err)
 		return
 	}
 
 	if released == 0 {
-		log.Printf(
-			"Distributed lock for key %s was not released because ownership changed or the lock expired",
-			cacheKey,
-		)
+		//log.Printf("Distributed lock for key %s was not released because ownership changed or the lock expired", cacheKey)
 		return
 	}
 
-	log.Printf(
-		"Distributed lock released for key %s",
-		cacheKey,
-	)
+	//log.Printf("Distributed lock released for key %s", cacheKey)
 }
 
 func (h *Handler) fetchWithDistributedLock(
@@ -136,23 +126,23 @@ func (h *Handler) fetchWithDistributedLock(
 	for {
 		token, acquired, err := h.tryAcquireDistributedLock(waitContext, lockKey, lockTTL)
 		if err != nil {
-			log.Printf("Distributed lock attempt failed for key %s: %v", cacheKey, err)
+			//log.Printf("Distributed lock attempt failed for key %s: %v", cacheKey, err)
 			return KeyValue{}, http.StatusServiceUnavailable, err
 		}
 
 		if acquired {
-			log.Printf("Distributed lock acquired for key %s", cacheKey)
+			//log.Printf("Distributed lock acquired for key %s", cacheKey)
 			return h.fetchAsDistributedLockOwner(r, cacheKey, lockKey, token, ttlL2, config)
 		}
 
 		if !waitingLogged {
-			log.Printf("Distributed lock busy for key %s; waiting for L2 value", cacheKey)
+			//log.Printf("Distributed lock busy for key %s; waiting for L2 value", cacheKey)
 			waitingLogged = true
 		}
 
 		value, found := h.getL2(waitContext, cacheKey)
 		if found {
-			log.Printf("L2 value became available while waiting for distributed lock for key %s", cacheKey)
+			//log.Printf("L2 value became available while waiting for distributed lock for key %s", cacheKey)
 			return value, http.StatusOK, nil
 		}
 
@@ -164,14 +154,14 @@ func (h *Handler) fetchWithDistributedLock(
 		}
 
 		if lockExists == 0 {
-			log.Printf("Distributed lock disappeared without an L2 value for key %s; retrying", cacheKey)
+			//log.Printf("Distributed lock disappeared without an L2 value for key %s; retrying", cacheKey)
 			continue
 		}
 
 		select {
 		case <-time.After(lockPollInterval):
 		case <-waitContext.Done():
-			log.Printf("Timed out while waiting for distributed lock for key %s", cacheKey)
+			//log.Printf("Timed out while waiting for distributed lock for key %s", cacheKey)
 			return KeyValue{}, http.StatusGatewayTimeout, waitContext.Err()
 		}
 	}
@@ -189,16 +179,16 @@ func (h *Handler) fetchAsDistributedLockOwner(
 
 	value, found := h.getL2(r.Context(), cacheKey)
 	if found {
-		log.Printf("L2 value already exists after acquiring distributed lock for key %s; backend call skipped", cacheKey)
+		//log.Printf("L2 value already exists after acquiring distributed lock for key %s; backend call skipped", cacheKey)
 		return value, http.StatusOK, nil
 	}
 
-	log.Printf("Distributed lock owner is calling backend for key %s", cacheKey)
+	//log.Printf("Distributed lock owner is calling backend for key %s", cacheKey)
 
 	value, statusCode, err := h.fetchFromBackend(r, config.BackendTimeoutMs)
 
 	if err != nil {
-		log.Printf("Backend call failed while holding distributed lock for key %s: %v", cacheKey, err)
+		//log.Printf("Backend call failed while holding distributed lock for key %s: %v", cacheKey, err)
 		return value, statusCode, err
 	}
 
@@ -206,7 +196,7 @@ func (h *Handler) fetchAsDistributedLockOwner(
 		value.L2Expiration = time.Now().Add(ttlL2)
 
 		h.setL2(r.Context(), cacheKey, value, ttlL2, config.L2MaxEntries)
-		log.Printf("Distributed lock owner stored backend response in L2 for key %s", cacheKey)
+		//log.Printf("Distributed lock owner stored backend response in L2 for key %s", cacheKey)
 	}
 
 	return value, statusCode, nil
