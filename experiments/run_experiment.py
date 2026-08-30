@@ -18,6 +18,8 @@ from typing import Any
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_RESULTS_DIR = PROJECT_ROOT / "experiments" / "results"
 DEFAULT_PROMETHEUS_URL = "http://localhost:9090"
+DEFAULT_GATEWAY_URL = "http://localhost:8080"
+DEFAULT_BACKEND_URL = "http://localhost:8081"
 
 
 # PromQL expressions taken from the Grafana dashboard.
@@ -471,6 +473,39 @@ def check_prometheus(prometheus_url: str) -> None:
         ) from error
 
 
+def fetch_json(
+    endpoint: str,
+    description: str,
+) -> dict[str, Any]:
+    request = urllib.request.Request(
+        endpoint,
+        method="GET",
+        headers={"Accept": "application/json"},
+    )
+
+    try:
+        with urllib.request.urlopen(
+            request,
+            timeout=5,
+        ) as response:
+            payload = json.loads(
+                response.read().decode("utf-8")
+            )
+    except Exception as error:
+        raise RuntimeError(
+            f"Unable to fetch {description} "
+            f"from {endpoint}: {error}"
+        ) from error
+
+    if not isinstance(payload, dict):
+        raise RuntimeError(
+            f"{description} endpoint did not return "
+            "a JSON object."
+        )
+
+    return payload
+
+
 def create_experiment_directory(
     results_root: Path,
     test_path: Path,
@@ -732,6 +767,26 @@ def parse_arguments() -> argparse.Namespace:
     )
 
     parser.add_argument(
+        "--gateway-url",
+        default=DEFAULT_GATEWAY_URL,
+        help=(
+            "Gateway URL used to retrieve the current "
+            "configuration. Default: "
+            f"{DEFAULT_GATEWAY_URL}"
+        ),
+    )
+
+    parser.add_argument(
+        "--backend-url",
+        default=DEFAULT_BACKEND_URL,
+        help=(
+            "Backend URL used to retrieve the current "
+            "configuration. Default: "
+            f"{DEFAULT_BACKEND_URL}"
+        ),
+    )
+
+    parser.add_argument(
         "--results-dir",
         type=Path,
         default=DEFAULT_RESULTS_DIR,
@@ -823,6 +878,30 @@ def main() -> int:
 
         check_prometheus(args.prometheus_url)
 
+        gateway_config_endpoint = (
+            f"{args.gateway_url.rstrip('/')}"
+            "/api/cache-config"
+        )
+
+        backend_config_endpoint = (
+            f"{args.backend_url.rstrip('/')}"
+            "/config"
+        )
+
+        print("Fetching current gateway configuration...")
+
+        gateway_config = fetch_json(
+            gateway_config_endpoint,
+            "gateway configuration",
+        )
+
+        print("Fetching current backend configuration...")
+
+        backend_config = fetch_json(
+            backend_config_endpoint,
+            "backend configuration",
+        )
+
         k6_arguments = list(args.k6_args)
         if k6_arguments and k6_arguments[0] == "--":
             k6_arguments = k6_arguments[1:]
@@ -884,6 +963,14 @@ def main() -> int:
         write_json(
             system_config_path,
             {
+                "gateway": {
+                    "source": gateway_config_endpoint,
+                    "configuration": gateway_config,
+                },
+                "backend": {
+                    "source": backend_config_endpoint,
+                    "configuration": backend_config,
+                },
                 "experiment_config": system_config,
                 "environment": collect_environment_info(),
             },
