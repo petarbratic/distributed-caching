@@ -4,7 +4,7 @@ import { check } from 'k6';
 const gatewayURL = 'http://localhost:8080';
 const backendFaultURL = 'http://localhost:8081/fault';
 
-const faultStartTime = '120s';
+const faultStartTime = '45s';
 const faultDurationMs = 13000;
 
 export const options = {
@@ -26,7 +26,7 @@ export const options = {
         },
         {
           target: 77,
-          duration: '225s',
+          duration: '90s',
         },
       ],
     },
