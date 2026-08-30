@@ -21,7 +21,6 @@ type LoadSignals struct {
 	P99LatencyMs          float64 `json:"p99LatencyMs"`
 	ActiveRequests        int64   `json:"activeRequests"`
 	MaxConcurrentRequests int     `json:"maxConcurrentRequests"`
-	Utilization           float64 `json:"utilization"`
 	SampleCount           int     `json:"sampleCount"`
 }
 
@@ -121,14 +120,6 @@ func (h *Handler) GetLoadSignals(w http.ResponseWriter, req *http.Request) {
 
 	h.configMu.RUnlock()
 
-	utilization := 0.0
-
-	if maxConcurrentRequests > 0 {
-		utilization =
-			float64(activeRequests) /
-				float64(maxConcurrentRequests)
-	}
-
 	durations := h.recentRequestDurations(time.Now())
 
 	signals := LoadSignals{
@@ -137,7 +128,6 @@ func (h *Handler) GetLoadSignals(w http.ResponseWriter, req *http.Request) {
 		),
 		ActiveRequests:        activeRequests,
 		MaxConcurrentRequests: maxConcurrentRequests,
-		Utilization:           utilization,
 		SampleCount:           len(durations),
 	}
 

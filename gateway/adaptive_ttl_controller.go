@@ -63,7 +63,6 @@ type BackendLoadSignals struct {
 	P99LatencyMs          float64 `json:"p99LatencyMs"`
 	ActiveRequests        int64   `json:"activeRequests"`
 	MaxConcurrentRequests int     `json:"maxConcurrentRequests"`
-	Utilization           float64 `json:"utilization"`
 	SampleCount           int     `json:"sampleCount"`
 }
 
