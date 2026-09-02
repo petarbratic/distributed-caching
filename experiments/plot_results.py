@@ -98,27 +98,29 @@ METRIC_UNITS = {
 # Order in which metrics appear in the image.
 METRIC_ORDER = [
     "all_requests",
+    "backend_calls",
+    "average_request_duration",
+    "failure_amplification_factor",
+    "request_duration_p99",
+    "faf_by_key",
+    "cache_hit_ratio_total",
+    "cache_misses",
+
+    "adaptive_ttl_factor",
     "l1_hits",
     "l2_hits",
-    "backend_calls",
-    "cache_misses",
     "backend_throughput",
     "active_backend_requests",
     "failed_request_ratio",
     "singleflight_waiting_requests",
     "distributed_lock_attempts",
-    "faf_by_key",
-    "average_request_duration",
     "average_backend_duration",
-    "failure_amplification_factor",
-    "cache_hit_ratio_total",
     "cache_hit_ratio_l1",
     "cache_hit_ratio_l2",
     "request_duration_p95",
-    "request_duration_p99",
     "adaptive_ttl_backend_p99_milliseconds",
     "adaptive_ttl_state",
-    "adaptive_ttl_factor",
+    
     "adaptive_ttl_effective_seconds",
 ]
 
@@ -430,7 +432,7 @@ def configure_axis(
 ) -> None:
     axis.set_title(
         metric_title(metric),
-        fontsize=12,
+        fontsize=16,
         fontweight="bold",
     )
 
@@ -598,7 +600,7 @@ def plot_metric(
         axis.legend(
             handles,
             labels,
-            fontsize=7.5,
+            fontsize=10.5,
             loc="best",
             framealpha=0.9,
             ncol=legend_columns,
