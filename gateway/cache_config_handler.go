@@ -44,10 +44,10 @@ func (h *Handler) updateCacheConfig(
 		return
 	}
 
-	if newConfig.L1MaxEntries <= 0 {
+	if newConfig.L1MaxEntries < 0 {
 		http.Error(
 			w,
-			"L1MaxEntries must be greater than zero",
+			"L1MaxEntries must be less than zero",
 			http.StatusBadRequest,
 		)
 		return

@@ -92,8 +92,8 @@ export class App implements OnInit {
     this.successMessage = '';
     this.errorMessage = '';
 
-    if (this.cacheConfig.l1MaxEntries <= 0) {
-      this.errorMessage = 'L1 size must be greater than 0.';
+    if (this.cacheConfig.l1MaxEntries < 0) {
+      this.errorMessage = 'L1 size must be greater than or equal 0.';
       return;
     }
 
