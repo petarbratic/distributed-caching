@@ -136,8 +136,6 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	totalUserRequests.Inc()
-
 	start := time.Now()
 
 	ctx := r.Context()

@@ -3,7 +3,12 @@ package main
 import (
 	"log"
 	"net/http"
+	"strings"
 )
+
+func isUserRequest(req *http.Request) bool {
+	return strings.HasPrefix(req.URL.Path, "/api/backend/")
+}
 
 func metricsMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(
@@ -22,9 +27,13 @@ func metricsMiddleware(next http.Handler) http.Handler {
 
 		next.ServeHTTP(responseWriter, req)
 
-		if responseWriter.statusCode >= 500 {
-			log.Println("Failed request")
-			totalFailedRequests.Inc()
+		if isUserRequest(req) {
+			totalUserRequests.Inc()
+
+			if responseWriter.statusCode >= 500 {
+				log.Println("Failed request")
+				totalFailedRequests.Inc()
+			}
 		}
 	})
 }
