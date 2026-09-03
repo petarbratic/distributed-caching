@@ -6,10 +6,10 @@
       "l2MaxEntries": 60,
       "l1TTLSeconds": 5,
       "l2TTLSeconds": 15,
-      "singleFlightEnabled": true,
-      "distributedLockEnabled": false,
+      "singleFlightEnabled": false,
+      "distributedLockEnabled": true,
       "probabilisticEarlyRefreshEnabled": false,
-      "earlyRefreshBeta": 1,
+      "earlyRefreshBeta": 0.1,
       "backendTimeoutMs": 1500,
       "adaptiveTTLEnabled": false,
       "adaptiveTTLMinFactor": 0.8,
@@ -31,7 +31,7 @@
   "environment": {
     "operating_system": "Windows-11-10.0.26200-SP0",
     "python_version": "3.14.3 (tags/v3.14.3:323c59a, Feb  3 2026, 16:04:56) [MSC v.1944 64 bit (AMD64)]",
-    "git_commit": "6e290ab2246a9954067d605ccd6ad96c7f94fd81",
+    "git_commit": "2f40aab40d634a39d680e0fa36467870adb7dffe",
     "git_branch": "main",
     "k6_version": "k6.exe v2.0.0-rc1 (commit/fb943a6a80, go1.26.2, windows/amd64)",
     "docker_version": "Docker version 29.3.1, build c2be9cc"
