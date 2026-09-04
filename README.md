@@ -267,11 +267,55 @@ For the adaptive TTL variant of the burst-load experiment, the following additio
 
 | Adaptive TTL parameter | Value |
 | --- | ---: |
-| Minimum factor | 1.0 |
+| Minimum factor | 0.8 |
 | Maximum factor | 2.5 |
 | Backend P99 latency threshold | 280 ms |
 | Backend concurrency threshold | 6 |
 | Adjustment interval | 2000 ms |
+
+### Backend-Unavailability Configuration
+
+The following configuration is used with `tests/backend-unavailability.js`:
+
+| Parameter | Value |
+| --- | ---: |
+| L1 maximum entries | 30 |
+| L2 maximum entries | 60 |
+| L1 TTL | 5 seconds |
+| L2 TTL | 15 seconds |
+| Backend semaphore size | 5 |
+| Delay per concurrent backend request | 10 ms |
+| Backend base latency | 200 ms |
+| Early-refresh beta | 0.1 |
+| Backend timeout | 1500 ms |
+
+For the adaptive TTL variant of the backend-unavailability experiment, the following additional parameters are used:
+
+| Adaptive TTL parameter | Value |
+| --- | ---: |
+| Minimum factor | 0.8 |
+| Maximum factor | 2.5 |
+| Backend P99 latency threshold | 280 ms |
+| Backend concurrency threshold | 6 |
+| Adjustment interval | 2000 ms |
+
+### L2-Only Zipf Configuration
+
+The following configuration is used with `tests/moderate-skew-zipf-l2only.js`:
+
+| Parameter | Value |
+| --- | ---: |
+| L1 maximum entries | 0 (disabled) |
+| L2 maximum entries | 60 |
+| L1 TTL | 5 seconds (unused) |
+| L2 TTL | 15 seconds |
+| Backend semaphore size | 5 |
+| Delay per concurrent backend request | 10 ms |
+| Backend base latency | 200 ms |
+| Early-refresh beta | 1.0 |
+| Backend timeout | 1500 ms |
+
+L1 is disabled through the frontend before the experiment. The results are compared with the moderate-skew Zipf scenario using both L1 and L2 caches.
 
 ### Strategy Selection
 
@@ -285,7 +329,7 @@ Only the strategy being evaluated should be enabled. All other strategies should
 | `earlyRefresh` | Off | Off | On | Off |
 | `adaptiveTTL` | Off | Off | Off | On |
 
-The `adaptiveTTL` variant is used for the burst-load scenario. The same burst-load cache and backend parameters are retained, while the adaptive TTL settings shown above are enabled.
+The `adaptiveTTL` variant is used for the burst-load and backend-unavailability scenarios. The cache and backend parameters for each scenario are retained, while the corresponding adaptive TTL settings shown above are enabled.
 
 ## Load Test Scenarios
 
@@ -297,6 +341,8 @@ The repository contains the following k6 scenarios:
 | `tests/high-skew-zipf.js` | High-skew Zipf distribution with stronger hot-key behavior |
 | `tests/synchronized-expiry.js` | Simultaneous expiration of several popular keys |
 | `tests/burst-load.js` | Sudden traffic increase followed by a recovery period |
+| `tests/backend-unavailability.js` | Temporary backend unavailability followed by recovery |
+| `tests/moderate-skew-zipf-l2only.js` | Moderate Zipf distribution with L1 disabled |
 
 ### Moderate Zipf load
 
@@ -341,6 +387,28 @@ The repository contains the following k6 scenarios:
 - 45-second burst phase;
 - 1-second ramp-down;
 - 45-second recovery phase.
+
+### Backend unavailability
+
+`tests/backend-unavailability.js` uses:
+
+- 100 keys;
+- Zipf skew: `0.8`;
+- 15-second warm-up from 5 to 77 requests per second;
+- 77 requests per second during the 90-second main phase;
+- total test duration: 105 seconds;
+- a 13-second backend fault activated at 45 seconds.
+
+### L2-only Zipf load
+
+`tests/moderate-skew-zipf-l2only.js` uses:
+
+- 100 keys;
+- Zipf skew: `0.8`;
+- warm-up from 5 to 78 requests per second;
+- 78 requests per second during the main phase;
+- total test duration: 240 seconds;
+- L2-only caching, compared with the L1 + L2 configuration under the same load profile.
 
 ## Running an Experiment
 
@@ -394,6 +462,8 @@ To run another traffic scenario, change the `--test` argument:
 python run_experiment.py --name baseline --test tests/high-skew-zipf.js
 python run_experiment.py --name baseline --test tests/synchronized-expiry.js
 python run_experiment.py --name baseline --test tests/burst-load.js
+python run_experiment.py --name baseline --test tests/backend-unavailability.js
+python run_experiment.py --name baseline --test tests/moderate-skew-zipf-l2only.js
 ```
 
 ## Experiment Results
@@ -406,11 +476,13 @@ The included results cover:
 - high-skew Zipf load;
 - synchronized-expiry load;
 - burst load;
+- backend unavailability;
+- moderate-skew Zipf load with L2-only caching;
 - baseline behavior;
 - SingleFlight;
 - distributed locking;
 - probabilistic early refresh;
-- adaptive TTL evaluation for the burst-load scenario.
+- adaptive TTL evaluation for the burst-load and backend-unavailability scenarios.
 
 Experiment data is written to:
 
@@ -507,6 +579,8 @@ Other examples:
 python plot_results.py results/high-skew-zipf
 python plot_results.py results/synchronized-expiry
 python plot_results.py results/burst-load
+python plot_results.py results/backend-unavailability
+python plot_results.py results/moderate-skew-zipf-l2only
 ```
 
 By default, the generated image is saved as:
