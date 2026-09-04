@@ -1,5 +1,8 @@
 import http from 'k6/http';
-import { check } from 'k6';
+import { check, randomSeed } from 'k6';
+
+const baseSeed = 42;
+let seeded = false;
 
 const gatewayURL = 'http://localhost:8080';
 const backendFaultURL = 'http://localhost:8081/fault';
@@ -67,6 +70,12 @@ for (const weight of weights) {
 }
 
 function selectZipfKey() {
+
+  if (!seeded) {
+    randomSeed(baseSeed + __VU);
+    seeded = true;
+  }
+
   const randomValue = Math.random();
 
   for (let index = 0; index < cumulativeProbabilities.length; index++) {

@@ -1,5 +1,8 @@
 import http from 'k6/http';
-import { check, fail } from 'k6';
+import { check, fail, randomSeed } from 'k6';
+
+const baseSeed = 42;
+let seeded = false;
 
 const baseURL = 'http://localhost:8080';
 
@@ -92,6 +95,12 @@ function createZipfDistribution(numberOfKeys, zipfSkew) {
 }
 
 function selectZipfKey() {
+
+  if (!seeded) {
+    randomSeed(baseSeed + __VU);
+    seeded = true;
+  }
+
   const randomValue = Math.random();
 
   for (

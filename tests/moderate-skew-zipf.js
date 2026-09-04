@@ -1,5 +1,8 @@
 import http from 'k6/http';
-import { check } from 'k6';
+import { check, randomSeed } from 'k6';
+
+const baseSeed = 42;
+let seeded = false;
 
 export const options = {
   scenarios: {
@@ -51,6 +54,12 @@ for (const weight of weights) {
 }
 
 function selectZipfKey() {
+
+  if (!seeded) {
+    randomSeed(baseSeed + __VU);
+    seeded = true;
+  }
+
   const randomValue = Math.random();
 
   for (let index = 0; index < cumulativeProbabilities.length; index++) {

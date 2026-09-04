@@ -1487,7 +1487,7 @@
                       },
                       "spec": {
                         "editorMode": "code",
-                        "expr": "sum(\r\n  increase(backend_requests_total{\r\n    job=\"backend\"\r\n  }[$__range])\r\n)\r\n/\r\nclamp_min(\r\n  sum(\r\n    increase(gateway_http_requests_total{\r\n      job=\"gateway\"\r\n    }[$__range])\r\n  ),\r\n  1\r\n)",
+                        "expr": "sum(\r\n  increase(backend_requests_total{\r\n    job=\"backend\"\r\n  }[$__rate_interval])\r\n)\r\n/\r\nclamp_min(\r\n  sum(\r\n    increase(gateway_http_requests_total{\r\n      job=\"gateway\"\r\n    }[$__rate_interval])\r\n  ),\r\n  1\r\n)",
                         "interval": "1s",
                         "legendFormat": "FAF",
                         "range": true

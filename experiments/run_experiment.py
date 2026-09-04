@@ -204,7 +204,7 @@ PROMETHEUS_QUERIES = {
           increase(
             backend_requests_total{
               job="backend"
-            }[$__range]
+            }[$__rate_interval]
           )
         )
         /
@@ -213,7 +213,7 @@ PROMETHEUS_QUERIES = {
             increase(
               gateway_http_requests_total{
                 job="gateway"
-              }[$__range]
+              }[$__rate_interval]
             )
           ),
           1
@@ -805,10 +805,10 @@ def parse_arguments() -> argparse.Namespace:
 
     parser.add_argument(
         "--rate-window",
-        default="10s",
+        default="4s",
         help=(
             "Prometheus window used in rate() expressions. "
-            "Replaces Grafana's $__rate_interval. Default: 10s."
+            "Replaces Grafana's $__rate_interval. Default: 4s."
         ),
     )
 

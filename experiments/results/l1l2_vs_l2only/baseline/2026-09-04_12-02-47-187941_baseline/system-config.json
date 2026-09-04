@@ -1,0 +1,39 @@
+{
+  "gateway": {
+    "source": "http://localhost:8080/api/cache-config",
+    "configuration": {
+      "l1MaxEntries": 0,
+      "l2MaxEntries": 60,
+      "l1TTLSeconds": 5,
+      "l2TTLSeconds": 15,
+      "singleFlightEnabled": false,
+      "distributedLockEnabled": false,
+      "probabilisticEarlyRefreshEnabled": false,
+      "earlyRefreshBeta": 1,
+      "backendTimeoutMs": 1500,
+      "adaptiveTTLEnabled": false,
+      "adaptiveTTLMinFactor": 0.8,
+      "adaptiveTTLMaxFactor": 2.5,
+      "adaptiveTTLLatencyThresholdMs": 280,
+      "adaptiveTTLConcurrencyThreshold": 6,
+      "adaptiveTTLAdjustmentIntervalMs": 2000
+    }
+  },
+  "backend": {
+    "source": "http://localhost:8081/config",
+    "configuration": {
+      "semaphoreSize": 5,
+      "concurrentDelayMs": 10,
+      "baseLatencyMs": 200
+    }
+  },
+  "experiment_config": {},
+  "environment": {
+    "operating_system": "Windows-11-10.0.26200-SP0",
+    "python_version": "3.14.3 (tags/v3.14.3:323c59a, Feb  3 2026, 16:04:56) [MSC v.1944 64 bit (AMD64)]",
+    "git_commit": "c6786f75c4f9e52ed59812ed0c44f50f33e875b4",
+    "git_branch": "main",
+    "k6_version": "k6.exe v2.0.0-rc1 (commit/fb943a6a80, go1.26.2, windows/amd64)",
+    "docker_version": "Docker version 29.3.1, build c2be9cc"
+  }
+}
